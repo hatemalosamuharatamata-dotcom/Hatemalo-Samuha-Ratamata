@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatemalo Samuha — हातेमालो समुह</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#003366;--secondary:#cc0000;--light:#f4f7f6;
+  --accent:#fbbf24;--white:#ffffff;--text:#1a1a2e;--muted:#6b7280;--border:#e5e7eb;
+}
+body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
+
+/* NAVBAR */
+.navbar{background:var(--primary);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-logo{width:42px;height:42px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--primary)}
+.nav-title h1{font-size:15px;font-weight:700;color:white;line-height:1.2}
+.nav-title p{font-size:11px;color:rgba(255,255,255,0.65)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-link{padding:6px 14px;color:rgba(255,255,255,0.8);border:none;background:transparent;cursor:pointer;font-size:13px;border-radius:6px;text-decoration:none}
+.nav-link:hover{background:rgba(255,255,255,0.12);color:white}
+.btn-login{padding:7px 18px;background:var(--secondary);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none}
+.btn-login:hover{background:#a80000}
+
+/* HERO */
+.hero{background:var(--primary);color:white;padding:72px 32px;text-align:center;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;opacity:0.04;background:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:20px 20px}
+.hero-content{position:relative;z-index:1}
+.hero-badge{display:inline-block;background:var(--accent);color:var(--primary);font-size:11px;font-weight:700;padding:4px 16px;border-radius:20px;margin-bottom:16px}
+.hero h1{font-size:34px;font-weight:700;margin-bottom:8px;line-height:1.2}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:15px;opacity:0.85;max-width:540px;margin:0 auto 28px;line-height:1.7}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-hero-p{padding:12px 32px;background:var(--secondary);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;text-decoration:none}
+.btn-hero-o{padding:12px 32px;background:transparent;color:white;border:2px solid rgba(255,255,255,0.5);border-radius:8px;cursor:pointer;font-size:14px;text-decoration:none}
+.hero-stats{display:flex;justify-content:center;gap:48px;margin-top:44px;flex-wrap:wrap}
+.hstat-n{font-size:28px;font-weight:700;color:var(--accent)}
+.hstat-l{font-size:12px;opacity:0.75;margin-top:2px}
+
+/* SECTIONS */
+.section{padding:60px 32px}
+.section-alt{background:var(--white)}
+.sec-title{text-align:center;margin-bottom:40px}
+.sec-title h2{font-size:26px;font-weight:700;color:var(--primary)}
+.sec-title p{font-size:14px;color:var(--muted);margin-top:8px;max-width:500px;margin-left:auto;margin-right:auto}
+.sec-title .ul{width:52px;height:3px;background:var(--secondary);border-radius:2px;margin:10px auto 0}
+
+/* ABOUT */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;max-width:920px;margin:0 auto}
+.about-text p{font-size:14px;color:var(--muted);line-height:1.9;margin-bottom:14px}
+.about-values{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.val-item{background:var(--light);border-radius:8px;padding:12px;border-left:3px solid var(--secondary)}
+.val-item h4{font-size:13px;font-weight:700;color:var(--primary)}
+.val-item p{font-size:12px;color:var(--muted);margin-top:2px}
+.about-img{background:var(--primary);border-radius:14px;height:300px;display:flex;align-items:center;justify-content:center;color:white;text-align:center}
+
+/* SLIDER */
+.slider-section{background:var(--primary);padding:52px 32px}
+.slider-wrap{position:relative;overflow:hidden;border-radius:14px;max-width:880px;margin:0 auto}
+.slides{display:flex;transition:transform 0.5s ease}
+.slide{min-width:100%;border-radius:14px;overflow:hidden;position:relative}
+.slide-img{height:340px;display:flex;align-items:center;justify-content:center}
+.slide-caption{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,40,0.88));padding:28px;color:white}
+.slide-caption h3{font-size:17px;font-weight:700}
+.slide-caption p{font-size:13px;opacity:0.8;margin-top:4px}
+.slide-dots{display:flex;justify-content:center;gap:8px;margin-top:16px}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.35);cursor:pointer;border:none;transition:all 0.3s}
+.dot.active{background:var(--accent);width:24px;border-radius:4px}
+
+/* BOARD */
+.board-card{max-width:740px;margin:0 auto;background:var(--white);border-radius:14px;padding:36px;border:1px solid var(--border);position:relative}
+.board-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--primary);border-radius:14px 14px 0 0}
+.quote-mark{font-size:72px;color:var(--accent);line-height:0.4;margin-bottom:20px;font-family:Georgia,serif}
+.board-msg{font-size:14px;color:var(--muted);line-height:2;font-style:italic}
+.board-author{display:flex;align-items:center;gap:16px;margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
+.board-av{width:56px;height:56px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:700}
+.board-info h4{font-size:15px;font-weight:700;color:var(--primary)}
+.board-info p{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* SERVICES */
+.services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:920px;margin:0 auto}
+.svc-card{background:var(--white);border-radius:12px;padding:26px;border:1px solid var(--border);text-align:center;transition:all 0.2s}
+.svc-card:hover{border-color:var(--primary);transform:translateY(-3px)}
+.svc-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+.svc-card h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:8px}
+.svc-card p{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* FOOTER */
+.footer{background:var(--primary);color:white;padding:48px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:36px}
+.footer-brand h3{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:10px}
+.footer-brand p{font-size:13px;opacity:0.75;line-height:1.7}
+.footer-col h4{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.06em}
+.footer-col a,.footer-col p{font-size:13px;opacity:0.75;display:block;margin-bottom:7px;color:white;text-decoration:none;cursor:pointer}
+.footer-col a:hover{opacity:1;color:var(--accent)}
+.footer-bottom{border-top:1px solid rgba(255,255,255,0.12);padding-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.footer-bottom p{font-size:12px;opacity:0.55}
+.fb-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:#1877f2;color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;margin-top:14px}
+
+/* AUTH MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,60,0.55);z-index:300;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:460px;overflow:hidden;position:relative;margin:auto}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:rgba(255,255,255,0.8);z-index:10}
+.modal-header{background:var(--primary);padding:26px;text-align:center;color:white}
+.modal-header.red{background:var(--secondary)}
+.modal-header h2{font-size:20px;font-weight:700}
+.modal-header p{font-size:13px;opacity:0.75;margin-top:5px}
+.modal-body{padding:28px}
+.login-choice{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.lc-btn{padding:22px 14px;border:2px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;background:var(--white);transition:all 0.2s}
+.lc-btn:hover{border-color:var(--primary);background:#f0f4ff}
+.lc-icon{font-size:32px;margin-bottom:10px}
+.lc-btn h3{font-size:14px;font-weight:700;color:var(--primary)}
+.lc-btn p{font-size:12px;color:var(--muted);margin-top:3px}
+*{box-sizing:border-box;margin:0;padding:0;max-width:100%}
+/* FORMS */
+.frow{margin-bottom:14px}
+.frow label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:5px}
+.frow label span{color:var(--secondary)}
+.frow input,.frow select,.frow textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:var(--white)}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--primary)}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fsect{font-size:12px;font-weight:700;color:var(--primary);padding:7px 12px;background:#f0f4ff;border-radius:6px;margin-bottom:12px;border-left:3px solid var(--primary)}
+.steps-bar{display:flex;align-items:center;margin-bottom:24px}
+.sc{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.sc.done{background:#16a34a;color:white}
+.sc.act{background:var(--primary);color:white}
+.sc.pen{background:var(--border);color:var(--muted)}
+.sl{font-size:11px;margin-left:6px;color:var(--muted);white-space:nowrap}
+.sl.act{color:var(--primary);font-weight:700}
+.sline{flex:1;height:2px;background:var(--border);margin:0 6px}
+.sline.done{background:#16a34a}
+.upload-box{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--light)}
+.upload-box:hover{border-color:var(--primary);background:#f0f4ff}
+.upload-box.has-file{border-color:#16a34a;background:#f0fdf4}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.photo-wrap{text-align:center;margin-bottom:16px}
+.photo-prev{width:100px;height:100px;border-radius:50%;border:3px solid var(--primary);margin:0 auto 10px;overflow:hidden;background:var(--light);display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer}
+.btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+.btn-p{background:var(--primary);color:white}
+.btn-p:hover{background:#002244}
+.btn-s{background:var(--secondary);color:white}
+.btn-o{background:transparent;color:var(--primary);border:2px solid var(--primary)}
+.btn-full{width:100%}
+.btn-row{display:flex;gap:10px;justify-content:space-between;margin-top:20px}
+.alert{font-size:12px;padding:10px 14px;border-radius:8px;margin-bottom:14px;border:1px solid transparent}
+.alert-e{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.alert-i{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+.hidden{display:none!important}
+.loader-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,60,0.35);z-index:500;align-items:center;justify-content:center}
+.loader-overlay.open{display:flex}
+.loader-box{background:white;border-radius:14px;padding:32px 40px;text-align:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-spin{width:40px;height:40px;border:4px solid var(--light);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
+.loader-box p{font-size:13px;color:var(--muted)}
+@media(max-width:768px){
+  .about-grid,.footer-grid,.services-grid{grid-template-columns:1fr}
+  .about-values{grid-template-columns:1fr}
+  
+  /* Navbar mobile fix */
+  .navbar{padding:0 12px;height:auto;min-height:60px;flex-wrap:wrap;gap:6px;padding-top:10px;padding-bottom:10px}
+  .nav-title p{display:none}
+  .nav-links{display:none}
+  .nav-brand{flex:1}
+  .nav-title h1{font-size:13px}
+  .nav-logo{width:34px;height:34px;font-size:13px}
+
+  /* Hero mobile fix */
+  .hero{padding:48px 16px}
+  .hero h1{font-size:26px}
+  .hero-stats{gap:24px}
+  .hstat-n{font-size:22px}
+
+  /* General */
+  .section{padding:40px 16px}
+  .footer{padding:32px 16px 20px}
+  .footer-bottom{flex-direction:column;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="loader-overlay" id="loader">
+  <div class="loader-box"><div class="loader-spin"></div><p id="loader-msg">Loading...</p></div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="nav-logo">H</div>
+    <div class="nav-title">
+      <h1>Hatemalo Samuha</h1>
+      <p>हातेमालो समुह — Jwalamukhi-01, Ratamata, Dhading</p>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="#hero" class="nav-link">Home</a>
+    <a href="#about" class="nav-link">About</a>
+    <a href="#services" class="nav-link">Services</a>
+    <a href="#contact" class="nav-link">Contact</a>
+  </div>
+  <div id="nav-auth-area"></div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-badge">Est. 2020 — Community Financial Group</div>
+    <h1>Hatemalo <span>Samuha</span><br>हातेमालो समुह</h1>
+    <p>A trusted community savings and loan group empowering members through collective financial strength, transparency, and mutual support in Jwalamukhi-01, Ratamata, Dhading.</p>
+    <div class="hero-btns">
+      <a href="#" class="btn-hero-p" onclick="openLoginModal();return false">Join / Login</a>
+      <a href="#about" class="btn-hero-o">Learn More</a>
+    </div>
+<div class="hero-stats">
+  <div><div class="hstat-n" id="stat-members">—</div><div class="hstat-l">Members</div></div>
+  <div><div class="hstat-n" id="stat-fund">—</div><div class="hstat-l">Total Fund</div></div>
+  <div><div class="hstat-n">3+</div><div class="hstat-l">Years Active</div></div>
+  <div><div class="hstat-n">100%</div><div class="hstat-l">Transparent</div></div>
+</div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="section section-alt" id="about">
+  <div class="sec-title"><h2>About Us</h2><div class="ul"></div><p>Building financial strength through community trust and cooperation</p></div>
+  <div class="about-grid">
+    <div class="about-text">
+      <h3 style="font-size:19px;font-weight:700;color:var(--primary);margin-bottom:12px">Who We Are</h3>
+      <p>Hatemalo Samuha is a community-based savings and credit group established by the residents of Jwalamukhi-01, Ratamata, Dhading. We believe in the power of collective savings and mutual support to uplift every member of our community.</p>
+      <p>Our group operates on principles of transparency, democratic decision-making, and financial discipline. Every member contributes monthly, and the accumulated fund is used to provide low-interest loans to members in need.</p>
+      <div class="about-values">
+        <div class="val-item"><h4>Transparency</h4><p>All finances open to members</p></div>
+        <div class="val-item"><h4>Mutual Support</h4><p>Members helping members</p></div>
+        <div class="val-item"><h4>Discipline</h4><p>Regular savings culture</p></div>
+        <div class="val-item"><h4>Growth</h4><p>Collective wealth building</p></div>
+      </div>
+    </div>
+    <div class="about-img">
+      <div style="text-align:center;opacity:0.8">
+        <div style="font-size:64px;margin-bottom:12px">🤝</div>
+        <p style="font-size:15px;font-weight:600">Together We Grow</p>
+        <p style="font-size:13px;opacity:0.75;margin-top:4px">Jwalamukhi-01, Ratamata, Dhading</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDER -->
+<section class="slider-section" id="activities">
+  <div class="sec-title" style="margin-bottom:28px"><h2 style="color:white">Our Activities</h2><div class="ul"></div><p style="color:rgba(255,255,255,0.7)">Moments from our community gatherings and events</p></div>
+  <div class="slider-wrap">
+    <div class="slides" id="slides">
+      <div class="slide"><div class="slide-img" style="background:#003366;height:340px;display:flex;align-items:center;justify-content:center;text-align:center;color:white"><div><div style="font-size:60px;margin-bottom:12px">🤝</div><div style="font-size:16px;font-weight:600">Monthly Meeting</div></div></div><div class="slide-caption"><h3>Monthly General Meeting</h3><p>Members gathering to review finances and make group decisions together</p></div></div>
+      <div class="slide"><div class="slide-img" style="background:#1a3a6b;height:340px;display:flex;align-items:center;justify-content:center;text-align:center;color:white"><div><div style="font-size:60px;margin-bottom:12px">🎂</div><div style="font-size:16px;font-weight:600">Birthday Celebrations</div></div></div><div class="slide-caption"><h3>Member Birthday Celebrations</h3><p>Celebrating milestones together — strengthening our community bonds</p></div></div>
+      <div class="slide"><div class="slide-img" style="background:#0d2b5e;height:340px;display:flex;align-items:center;justify-content:center;text-align:center;color:white"><div><div style="font-size:60px;margin-bottom:12px">💰</div><div style="font-size:16px;font-weight:600">Fund Collection</div></div></div><div class="slide-caption"><h3>Monthly Fund Collection</h3><p>Regular savings drive — every rupee collected builds our collective future</p></div></div>
+      <div class="slide"><div class="slide-img" style="background:#002a5c;height:340px;display:flex;align-items:center;justify-content:center;text-align:center;color:white"><div><div style="font-size:60px;margin-bottom:12px">🎉</div><div style="font-size:16px;font-weight:600">Anniversary Events</div></div></div><div class="slide-caption"><h3>Group Anniversary Celebration</h3><p>Marking another year of growth, unity, and financial empowerment</p></div></div>
+      <div class="slide"><div class="slide-img" style="background:#001f4d;height:340px;display:flex;align-items:center;justify-content:center;text-align:center;color:white"><div><div style="font-size:60px;margin-bottom:12px">📋</div><div style="font-size:16px;font-weight:600">Loan Disbursement</div></div></div><div class="slide-caption"><h3>Loan Disbursement Ceremony</h3><p>Empowering members with funds to fulfil their goals and dreams</p></div></div>
+    </div>
+  </div>
+  <div class="slide-dots" id="slide-dots"></div>
+</section>
+
+<!-- BOARD MESSAGE -->
+<section class="section section-alt" id="board">
+  <div class="sec-title"><h2>Message from the Board</h2><div class="ul"></div></div>
+  <div class="board-card">
+    <div class="quote-mark">"</div>
+    <p class="board-msg">Hatemalo Samuha was founded on the simple belief that when a community comes together with a shared purpose, extraordinary things become possible. Over the years, we have seen our members transform their lives — starting small businesses, educating their children, and building homes — all made possible through our collective savings and mutual trust.<br><br>Our commitment is to maintain full transparency, democratic governance, and financial discipline so that every member has equal access to opportunity. We invite all residents of Jwalamukhi to join hands with us and build a stronger, more prosperous community together.</p>
+    <div class="board-author">
+      <div class="board-av">अ</div>
+      <div class="board-info">
+        <h4>Chairperson</h4>
+        <p>Board of Directors — Hatemalo Samuha</p>
+        <p style="color:var(--secondary);font-size:11px;margin-top:2px">Jwalamukhi-01, Ratamata, Dhading</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section" id="services">
+  <div class="sec-title"><h2>Our Services</h2><div class="ul"></div><p>Financial solutions designed for our community members</p></div>
+  <div class="services-grid">
+    <div class="svc-card"><div class="svc-icon" style="background:#dbeafe">💼</div><h3>Monthly Savings</h3><p>Regular monthly contributions of Rs 1,100 per member building a strong collective fund.</p></div>
+    <div class="svc-card"><div class="svc-icon" style="background:#fee2e2">💸</div><h3>Member Loans</h3><p>Access low-interest loans from the group fund for personal, business, or emergency needs.</p></div>
+    <div class="svc-card"><div class="svc-icon" style="background:#fef3c7">🎂</div><h3>Special Contributions</h3><p>Members contribute on birthdays, anniversaries, and special occasions to grow the fund.</p></div>
+    <div class="svc-card"><div class="svc-icon" style="background:#dcfce7">📊</div><h3>Financial Tracking</h3><p>Full transparency — members can view their savings, loan status, and history anytime.</p></div>
+    <div class="svc-card"><div class="svc-icon" style="background:#ede9fe">🔔</div><h3>Notice & Updates</h3><p>Stay informed with group announcements, meeting notices, and important updates.</p></div>
+    <div class="svc-card"><div class="svc-icon" style="background:#ccfbf1">🤝</div><h3>Community Support</h3><p>Beyond finances — we support each other in times of need and celebrate shared successes.</p></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer" id="contact">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <h3>Hatemalo Samuha</h3>
+      <p>हातेमालो समुह — A community savings and credit group dedicated to the financial empowerment of our members through collective action and mutual trust.</p>
+      <a href="https://facebook.com/groups/1838866443324941" target="_blank" class="fb-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+        Follow us on Facebook
+      </a>
+    </div>
+    <div class="footer-col">
+      <h4>Quick Links</h4>
+      <a href="#about">About Us</a>
+      <a href="#services">Services</a>
+      <a href="#activities">Activities</a>
+      <a href="#" onclick="openLoginModal();return false">Member Login</a>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <p>Jwalamukhi-01, Ratamata</p>
+      <p>Dhading, Nepal</p>
+      <p style="color:var(--accent);opacity:1;margin-top:8px">hatemalo@group.com</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2025 Hatemalo Samuha. All rights reserved.</p>
+    <p>Jwalamukhi-01, Ratamata, Dhading, Nepal</p>
+  </div>
+</footer>
+
+<!-- LOGIN / REGISTER MODAL -->
+<div class="modal-bg" id="modal-login" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8Lcwa0h_tDLFBWkEKMfOn8hAdJ_5gn9nUzHpuBgruBEYKpdYXB9Vf6fVltk0bvvCi/exec';
+const ADMIN_EMAIL = 'admin@hatemalo.com';
+const ADMIN_PASS  = 'admin123';
+
+let members = [];
+let regStep = 1;
+let regData = {};
+
+// ── HELPERS ──────────────────────────────────────────────
+const today = () => new Date().toISOString().split('T')[0];
+function showLoader(msg='Loading...'){document.getElementById('loader-msg').textContent=msg;document.getElementById('loader').classList.add('open');}
+function hideLoader(){document.getElementById('loader').classList.remove('open');}
+
+async function hashPassword(pw){
+  const enc=new TextEncoder().encode(pw);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function sendOTP(body) {
+  const to    = body.to || '';
+  const name  = body.name || 'Member';
+  const otp   = body.otp || '';
+  if (!to || !otp) return { error: 'Missing email or OTP' };
+
+  const subject = '🔐 Your Hatemalo Samuha Verification Code: ' + otp;
+  const html =
+    '<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#f4f7f6;padding:32px;border-radius:12px">' +
+    '<div style="background:#003366;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px">' +
+    '<div style="font-size:22px;font-weight:700;color:#fbbf24">Hatemalo Samuha</div>' +
+    '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px">हातेमालो समुह</div></div>' +
+    '<div style="background:white;border-radius:10px;padding:24px">' +
+    '<p style="font-size:15px;color:#1a1a2e;margin-bottom:8px">नमस्ते ' + name + ' जी,</p>' +
+    '<p style="font-size:13px;color:#6b7280;line-height:1.8;margin-bottom:20px">Your email verification code for Hatemalo Samuha member registration is:</p>' +
+    '<div style="background:#f0f4ff;border:2px dashed #003366;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px">' +
+    '<div style="font-size:36px;font-weight:700;color:#003366;letter-spacing:10px">' + otp + '</div>' +
+    '<div style="font-size:12px;color:#6b7280;margin-top:8px">This code expires in <strong>10 minutes</strong></div></div>' +
+    '<p style="font-size:12px;color:#6b7280">If you did not request this, please ignore this email.</p></div>' +
+    '<div style="text-align:center;margin-top:16px;font-size:11px;color:#9ca3af">© Hatemalo Samuha — Jwalamukhi-01, Ratamata, Dhading</div></div>';
+
+  MailApp.sendEmail({ to: to, subject: subject, htmlBody: html });
+  return { success: true };
+}
+
+async function loadMembers(){
+  try{
+    const res=await fetch(`${SCRIPT_URL}?action=getAllSheets`);
+    const data=await res.json();
+    if(data.members) members=data.members;
+  }catch(e){console.warn('Could not load members',e);}
+}
+
+async function saveToSheet(sheet,data){
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'insert',sheet,...{data}})});
+    return await res.json();
+  }catch(e){return {error:e.message};}
+}
+
+async function uploadFileToGDrive(file,label){
+  return new Promise((resolve)=>{
+    if(!file){resolve(null);return;}
+    if(file.type.startsWith('image/')){
+      const img=new Image();const reader=new FileReader();
+      reader.onload=(e)=>{
+        img.onload=async()=>{
+          const canvas=document.createElement('canvas');
+          const MAX=800;let w=img.width,h=img.height;
+          if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+          canvas.width=w;canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          const base64=canvas.toDataURL('image/jpeg',0.7).split(',')[1];
+          try{
+            const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'.jpg',base64Data:base64,mimeType:'image/jpeg'})});
+            const data=await res.json();resolve(data.url||null);
+          }catch(e){resolve(null);}
+        };
+        img.src=e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }else{
+      if(file.size>2*1024*1024){alert('File too large. Max 2MB.');resolve(null);return;}
+      const reader=new FileReader();
+      reader.onload=async(e)=>{
+        const base64=e.target.result.split(',')[1];
+        try{
+          const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'_'+file.name,base64Data:base64,mimeType:file.type})});
+          const data=await res.json();resolve(data.url||null);
+        }catch(e){resolve(null);}
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+// ── SLIDER ───────────────────────────────────────────────
+let slideIdx=0,slideTimer;
+function buildDots(){
+  const d=document.getElementById('slide-dots');if(!d)return;d.innerHTML='';
+  for(let i=0;i<5;i++){const b=document.createElement('button');b.className='dot'+(i===0?' active':'');b.onclick=()=>goSlide(i);d.appendChild(b);}
+}
+function goSlide(n){
+  slideIdx=n;
+  const s=document.getElementById('slides');if(s)s.style.transform=`translateX(-${n*100}%)`;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===n));
+}
+
+// ── MODAL ─────────────────────────────────────────────────
+function openLoginModal(){loadMembers();showLoginChoice();document.getElementById('modal-login').classList.add('open');}
+function closeModal(){document.getElementById('modal-login').classList.remove('open');}
+
+function showLoginChoice(){
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-header"><h2>Welcome to Hatemalo Samuha</h2><p>हातेमालो समुह — Sign in to your account</p></div>
+    <div class="modal-body">
+      <div class="login-choice">
+        <div class="lc-btn" onclick="showLoginForm('member')"><div class="lc-icon">👤</div><h3>Member Login</h3><p>Access your personal dashboard</p></div>
+        <div class="lc-btn" onclick="showLoginForm('admin')"><div class="lc-icon">🔐</div><h3>Admin Login</h3><p>Manage the group system</p></div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--muted)">Not a member yet? <a onclick="showRegister(1)" style="color:var(--primary);cursor:pointer;font-weight:700">Create an account</a></div>
+      <div style="text-align:center;margin-top:12px">
+  <a href="forgot.html" style="font-size:12px;color:#003366">Forgot password?</a>
+</div>
+    </div>`;
+}
+
+function showLoginForm(role){
+  const isA=role==='admin';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-header ${isA?'red':''}"><h2>${isA?'Admin Login':'Member Login'}</h2><p>${isA?'Restricted — authorized personnel only':'Access your member dashboard'}</p></div>
+    <div class="modal-body">
+      <div class="alert alert-e hidden" id="login-err">Invalid credentials.</div>
+      <div class="frow"><label>${isA?'Email':'Username'} <span>*</span></label><input type="text" id="l-user" placeholder="${isA?'admin email':'username'}"></div>
+      <div class="frow"><label>Password <span>*</span></label><input type="password" id="l-pass" placeholder="password"></div>
+      <button class="btn ${isA?'btn-s':'btn-p'} btn-full" onclick="doLogin('${role}')">Sign In</button>
+      <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
+        <a onclick="showLoginChoice()" style="color:var(--primary);cursor:pointer">← Back</a>
+        ${!isA?' &nbsp;|&nbsp; <a onclick="showRegister(1)" style="color:var(--primary);cursor:pointer;font-weight:700">Create account</a>':''}
+      </div>
+    </div>`;
+}
+
+async function doLogin(role){
+  const u=document.getElementById('l-user').value.trim();
+  const p=document.getElementById('l-pass').value;
+  if(role==='admin'){
+    if(u===ADMIN_EMAIL&&p===ADMIN_PASS){
+      localStorage.setItem('hs_role','admin');
+      localStorage.setItem('hs_user',JSON.stringify({name:'Admin',role:'admin'}));
+      closeModal();
+      window.location.href='admin.html';
+    } else { document.getElementById('login-err').classList.remove('hidden'); }
+    return;
+  }
+  showLoader('Logging in...');
+  await loadMembers();
+  const hashed=await hashPassword(p);
+  const m=members.find(x=>x.username===u&&x.password===hashed);
+  hideLoader();
+  if(m){
+    if(m.status==='pending'){document.getElementById('login-err').textContent='Your account is pending admin verification.';document.getElementById('login-err').classList.remove('hidden');return;}
+    localStorage.setItem('hs_role','member');
+    localStorage.setItem('hs_user',JSON.stringify(m));
+    closeModal();
+    window.location.href='member.html';
+  } else { document.getElementById('login-err').classList.remove('hidden'); }
+}
+
+async function loadPublicStats(){
+  try{
+    const res  = await fetch(`${SCRIPT_URL}?action=getAllSheets`);
+    const data = await res.json();
+
+    // Member count — verified only
+    const verified = (data.members||[]).filter(m=>m.status==='verified').length;
+    const statM = document.getElementById('stat-members');
+    if(statM) statM.textContent = verified + '+';
+
+    // Total fund — sum of all paid dues
+    const totalFund = (data.dues||[])
+      .filter(d=>d.status==='paid')
+      .reduce((s,d)=>s+Number(d.amount||0), 0);
+    const statF = document.getElementById('stat-fund');
+    if(statF){
+      // Format as Rs XL+ or Rs X,XXX
+      if(totalFund >= 100000){
+        statF.textContent = 'Rs ' + (totalFund/100000).toFixed(1) + 'L+';
+      } else {
+        statF.textContent = 'Rs ' + totalFund.toLocaleString();
+      }
+    }
+  } catch(e){
+    console.warn('Could not load public stats', e);
+    // Fall back to static values on error
+    const statM = document.getElementById('stat-members');
+    const statF = document.getElementById('stat-fund');
+    if(statM) statM.textContent = '50+';
+    if(statF) statF.textContent = 'Rs 5L+';
+  }
+}
+
+// call it
+loadPublicStats();
+// ── REGISTRATION ──────────────────────────────────────────
+function showRegister(step){
+  regStep=step||1;
+  const steps=[{label:'Account',num:1},{label:'Personal',num:2},{label:'Family',num:3},{label:'Documents',num:4}];
+  const stepBar=steps.map((s,i)=>`
+    <div style="display:flex;align-items:center;${i<steps.length-1?'flex:1':''}">
+      <div class="sc ${regStep>s.num?'done':regStep===s.num?'act':'pen'}">${regStep>s.num?'✓':s.num}</div>
+      <span class="sl ${regStep===s.num?'act':''}" style="margin-left:5px">${s.label}</span>
+      ${i<steps.length-1?`<div class="sline ${regStep>s.num+1?'done':''}" style="flex:1;margin:0 6px"></div>`:''}
+    </div>`).join('');
+  let body='';
+  if(step===1) body=`
+    <div class="fsect">Account Information</div>
+    <div class="frow"><label>Username <span>*</span></label><input type="text" id="r-username" placeholder="Choose a unique username"></div>
+    <div class="frow"><label>Password <span>*</span></label><input type="password" id="r-password" placeholder="Min 6 characters"></div>
+    <div class="frow"><label>Confirm Password <span>*</span></label><input type="password" id="r-confirm" placeholder="Repeat password"></div>
+    <div class="frow"><label>Role</label><select id="r-role"><option>Member</option><option>Treasurer</option><option>Secretary</option></select></div>
+    <div class="alert alert-e hidden" id="reg-err-1"></div>
+    <div class="btn-row"><div></div><button class="btn btn-p" onclick="regNext(2)">Next →</button></div>`;
+  else if(step===2) body=`
+    <div class="fsect">Personal Details</div>
+    <div class="frow"><label>Full Name <span>*</span></label><input type="text" id="r-fname" placeholder="Full legal name"></div>
+    <div class="fgrid2">
+      <div class="frow"><label>Gender <span>*</span></label><select id="r-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+      <div class="frow"><label>Occupation <span>*</span></label><input type="text" id="r-occ" placeholder="e.g. Farmer"></div>
+    </div>
+    <div class="fgrid2">
+      <div class="frow"><label>Citizenship No. <span>*</span></label><input type="text" id="r-citizen"></div>
+      <div class="frow"><label>Issue Date <span>*</span></label><input type="date" id="r-issue"></div>
+    </div>
+    <div class="frow"><label>Address <span>*</span></label><textarea id="r-addr" rows="2" placeholder="Full address"></textarea></div>
+    <div class="fgrid2">
+      <div class="frow"><label>Phone <span>*</span></label><input type="text" id="r-phone" placeholder="98XXXXXXXX"></div>
+      <div class="frow"><label>Email <span>*</span></label><input type="email" id="r-email" placeholder="your@email.com" value="${regData.email||''}"></div>
+    </div>
+    <div class="alert alert-e hidden" id="reg-err-2"></div>
+    <div class="btn-row"><button class="btn btn-o" onclick="showRegister(1)">← Back</button><button class="btn btn-p" onclick="regNext(3)">Next →</button></div>`;
+  else if(step===3) body=`
+    <div class="fsect">Family Details</div>
+    <div class="frow"><label>Father's Name <span>*</span></label><input type="text" id="r-father"></div>
+    <div class="frow"><label>Grandfather's Name <span>*</span></label><input type="text" id="r-grand"></div>
+    <div class="frow"><label>Spouse Name</label><input type="text" id="r-spouse" placeholder="If applicable"></div>
+    <div class="fsect" style="margin-top:16px">Profile Photo</div>
+    <div class="photo-wrap">
+      <div class="photo-prev" id="photo-prev" onclick="document.getElementById('photo-inp').click()">📷</div>
+      <input type="file" id="photo-inp" accept="image/*" class="hidden" onchange="previewPhoto(this);regData.photoFile=this.files[0];">
+      <p style="font-size:12px;color:var(--muted)">Click to upload your photo</p>
+    </div>
+    <div class="alert alert-e hidden" id="reg-err-3"></div>
+    <div class="btn-row"><button class="btn btn-o" onclick="showRegister(2)">← Back</button><button class="btn btn-p" onclick="regNext(4)">Next →</button></div>`;
+else if(step===4) body=`
+    <div class="fsect">Document Upload for Verification</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Please select your ID document type and upload clear photos of both front and back.</p>
+
+    <div class="frow">
+      <label>ID Document Type <span>*</span></label>
+      <select id="doc-type" onchange="showDocUpload(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:var(--white)">
+        <option value="">-- Select document type --</option>
+        <option value="Citizenship">🪪 Citizenship Certificate</option>
+        <option value="NID">🪪 National ID Card (NID)</option>
+        <option value="Passport">📘 Passport</option>
+        <option value="Drivers Licence">🚗 Driver's Licence</option>
+        <option value="Voter ID">🗳️ Voter ID Card</option>
+      </select>
+    </div>
+
+    <div id="doc-upload-section" style="display:none;margin-top:4px">
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#0369a1">
+        📋 Please upload <strong>clear, readable photos</strong> of both sides of your <strong id="doc-type-label">document</strong>. Blurry or incomplete images may delay verification.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-align:center">📄 FRONT SIDE <span style="color:var(--secondary)">*</span></div>
+          <div class="upload-box" id="ub-front" onclick="document.getElementById('doc-front').click()">
+            <div style="font-size:32px;margin-bottom:8px">⬆️</div>
+            <div style="font-size:13px;font-weight:600;color:var(--primary)">Upload Front</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">JPG, PNG or PDF</div>
+            <input type="file" id="doc-front" accept="image/*,.pdf" style="display:none" onchange="markDocSide('ub-front','front',this)">
+          </div>
+          <div id="front-preview" style="display:none;margin-top:8px;text-align:center">
+            <img id="front-img" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #16a34a">
+            <div style="font-size:11px;color:#16a34a;margin-top:4px;font-weight:600">✓ Front uploaded</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-align:center">📄 BACK SIDE <span style="color:var(--secondary)">*</span></div>
+          <div class="upload-box" id="ub-back" onclick="document.getElementById('doc-back').click()">
+            <div style="font-size:32px;margin-bottom:8px">⬆️</div>
+            <div style="font-size:13px;font-weight:600;color:var(--primary)">Upload Back</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">JPG, PNG or PDF</div>
+            <input type="file" id="doc-back" accept="image/*,.pdf" style="display:none" onchange="markDocSide('ub-back','back',this)">
+          </div>
+          <div id="back-preview" style="display:none;margin-top:8px;text-align:center">
+            <img id="back-img" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #16a34a">
+            <div style="font-size:11px;color:#16a34a;margin-top:4px;font-weight:600">✓ Back uploaded</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:14px">
+        💡 <strong>Tips:</strong> Place document on a flat surface · Good lighting · All text must be readable · No glare or shadows
+      </div>
+    </div>
+
+    <div class="alert alert-e hidden" id="reg-err-4">Please select document type and upload both front and back.</div>
+    <div class="alert alert-i" style="margin-top:4px">Your account will be reviewed by admin within 1–2 business days after submission.</div>
+    <div class="btn-row"><button class="btn btn-o" onclick="showRegister(3)">← Back</button><button class="btn btn-s" onclick="regSubmitDoc()">Submit Registration</button></div>`;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-header"><h2>Create Member Account</h2><p>Fill all details — admin will verify your account</p></div>
+    <div class="modal-body">
+      <div class="steps-bar" style="margin-bottom:20px">${stepBar}</div>
+      ${body}
+      <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">Already have an account? <a onclick="showLoginChoice()" style="color:var(--primary);cursor:pointer;font-weight:700">Sign in</a></div>
+    </div>`;
+}
+
+async function regNext(n){
+  if(n>regStep){
+    if(regStep===1){
+      const u=document.getElementById('r-username')?.value.trim();
+      const p=document.getElementById('r-password')?.value;
+      const c=document.getElementById('r-confirm')?.value;
+      if(!u||!p){document.getElementById('reg-err-1').textContent='Please fill all required fields.';document.getElementById('reg-err-1').classList.remove('hidden');return;}
+      if(p!==c){document.getElementById('reg-err-1').textContent='Passwords do not match.';document.getElementById('reg-err-1').classList.remove('hidden');return;}
+      if(p.length<6){document.getElementById('reg-err-1').textContent='Password must be at least 6 characters.';document.getElementById('reg-err-1').classList.remove('hidden');return;}
+      if(members.some(m=>m.username===u)){document.getElementById('reg-err-1').textContent='Username already taken.';document.getElementById('reg-err-1').classList.remove('hidden');return;}
+      regData.username=u;regData.rawPassword=p;regData.role=document.getElementById('r-role')?.value||'Member';
+    }
+    if(regStep===2){
+      const fn=document.getElementById('r-fname')?.value.trim();
+      const g=document.getElementById('r-gender')?.value;
+      const c=document.getElementById('r-citizen')?.value.trim();
+      const em=document.getElementById('r-email')?.value.trim();
+      if(!fn||!g||!c||!em){document.getElementById('reg-err-2').textContent='Please fill all required fields including Email.';document.getElementById('reg-err-2').classList.remove('hidden');return;}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){document.getElementById('reg-err-2').textContent='Please enter a valid email address.';document.getElementById('reg-err-2').classList.remove('hidden');return;}
+      regData.fullname=fn;regData.gender=g;regData.occupation=document.getElementById('r-occ')?.value||'';
+      regData.citizenno=c;regData.issuedate=document.getElementById('r-issue')?.value||'';
+      regData.address=document.getElementById('r-addr')?.value||'';
+      regData.phone=document.getElementById('r-phone')?.value||'';
+      regData.email=em;
+      // Send OTP before going to next step
+      await sendOTPToEmail();
+      return; // showOTPStep handles the rest
+    }
+    if(regStep===3){
+      const f=document.getElementById('r-father')?.value.trim();
+      const gf=document.getElementById('r-grand')?.value.trim();
+      if(!f||!gf){document.getElementById('reg-err-3').textContent="Father's and Grandfather's names are required.";document.getElementById('reg-err-3').classList.remove('hidden');return;}
+      regData.fathername=f;regData.grandfathername=gf;regData.spousename=document.getElementById('r-spouse')?.value||'';
+    }
+  }
+  regStep=n;showRegister(n);
+}
+
+function previewPhoto(input){
+  if(input.files&&input.files[0]){
+    const r=new FileReader();
+    r.onload=e=>{const p=document.getElementById('photo-prev');if(p){p.style.backgroundImage=`url(${e.target.result})`;p.style.backgroundSize='cover';p.style.backgroundPosition='center';p.textContent='';}};
+    r.readAsDataURL(input.files[0]);
+  }
+}
+function markDoc(boxId,input,label){
+  if(input.files&&input.files[0]){
+    const b=document.getElementById(boxId);
+    b.classList.add('has-file');
+    b.querySelector('div').textContent='✓';
+  }
+}
+
+function showDocUpload(type){
+  const section = document.getElementById('doc-upload-section');
+  const label   = document.getElementById('doc-type-label');
+  if(!type){ section.style.display='none'; return; }
+  section.style.display='block';
+  label.textContent = type;
+}
+
+function markDocSide(boxId, side, input){
+  if(!input.files || !input.files[0]) return;
+  const box = document.getElementById(boxId);
+  box.style.borderColor = '#16a34a';
+  box.style.background  = '#f0fdf4';
+
+  const preview = document.getElementById(side+'-preview');
+  const img     = document.getElementById(side+'-img');
+
+  if(input.files[0].type.startsWith('image/')){
+    const reader = new FileReader();
+    reader.onload = e => {
+      img.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    img.style.display = 'none';
+    preview.style.display = 'block';
+    preview.querySelector('div').textContent = '✓ ' + input.files[0].name.slice(0,25) + ' uploaded';
+  }
+}
+
+function regSubmitDoc(){
+  const docType  = document.getElementById('doc-type')?.value;
+  const docFront = document.getElementById('doc-front')?.files[0];
+  const docBack  = document.getElementById('doc-back')?.files[0];
+  const errEl    = document.getElementById('reg-err-4');
+
+  if(!docType){
+    errEl.textContent = 'Please select a document type.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if(!docFront){
+    errEl.textContent = 'Please upload the front side of your document.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if(!docBack){
+    errEl.textContent = 'Please upload the back side of your document.';
+    errEl.classList.remove('hidden'); return;
+  }
+
+  // Save doc type to regData for use in submitRegister
+  regData.docType = docType;
+  errEl.classList.add('hidden');
+  submitRegister();
+}
+
+// ── OTP FLOW ─────────────────────────────────────────────
+let generatedOTP = '';
+let otpExpiry    = 0;
+
+async function sendOTPToEmail(){
+  showLoader('Sending verification code to ' + regData.email + '...');
+  generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
+  otpExpiry    = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'sendOTP',
+        to:     regData.email,
+        name:   regData.fullname,
+        otp:    generatedOTP
+      })
+    });
+    hideLoader();
+    showOTPStep();
+  } catch(e) {
+    hideLoader();
+    alert('Failed to send OTP. Please check your email address and try again.');
+  }
+}
+
+function showOTPStep(){
+  const steps=[{label:'Account',num:1},{label:'Personal',num:2},{label:'Verify',num:'✉'},{label:'Family',num:3},{label:'Documents',num:4}];
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-header"><h2>Verify Your Email</h2><p>A 6-digit code was sent to ${regData.email}</p></div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:12px 0 20px">
+        <div style="font-size:48px;margin-bottom:12px">📧</div>
+        <p style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:6px">Check your inbox</p>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7">
+          We sent a 6-digit verification code to<br>
+          <strong style="color:var(--primary)">${regData.email}</strong>
+        </p>
+      </div>
+
+      <div class="frow">
+        <label style="text-align:center;display:block;font-size:13px;margin-bottom:10px">Enter 6-digit OTP <span>*</span></label>
+        <input type="text" id="otp-input" maxlength="6" placeholder="• • • • • •"
+          style="text-align:center;font-size:28px;font-weight:700;letter-spacing:12px;
+            padding:14px;border:2px solid var(--border);border-radius:10px;width:100%;
+            color:var(--primary)"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+
+      <div class="alert alert-e hidden" id="otp-err">Incorrect code. Please try again.</div>
+
+      <button class="btn btn-p btn-full" onclick="verifyOTP()" style="margin-top:8px">
+        ✓ Verify & Continue
+      </button>
+
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted)">
+        Didn't receive it?
+        <a id="resend-btn" onclick="resendOTP()" style="color:var(--primary);cursor:pointer;font-weight:700">
+          Resend code
+        </a>
+        <span id="resend-timer" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <a onclick="showRegister(2)" style="color:var(--muted);cursor:pointer;font-size:12px">← Change email</a>
+      </div>
+    </div>`;
+
+  // Start 60s resend cooldown
+  startResendTimer();
+}
+
+function startResendTimer(){
+  let secs = 60;
+  const btn   = document.getElementById('resend-btn');
+  const timer = document.getElementById('resend-timer');
+  if(btn)   btn.style.pointerEvents = 'none';
+  if(timer) timer.textContent = ' (wait ' + secs + 's)';
+  const iv = setInterval(()=>{
+    secs--;
+    if(timer) timer.textContent = ' (wait ' + secs + 's)';
+    if(secs <= 0){
+      clearInterval(iv);
+      if(btn)   btn.style.pointerEvents = 'auto';
+      if(timer) timer.textContent = '';
+    }
+  }, 1000);
+}
+
+async function resendOTP(){
+  showLoader('Resending code...');
+  generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
+  otpExpiry    = Date.now() + 10 * 60 * 1000;
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'sendOTP',
+      to:     regData.email,
+      name:   regData.fullname,
+      otp:    generatedOTP
+    })
+  });
+  hideLoader();
+  showOTPStep();
+}
+
+function verifyOTP(){
+  const entered = document.getElementById('otp-input')?.value.trim();
+  const errEl   = document.getElementById('otp-err');
+
+  if(!entered || entered.length !== 6){
+    errEl.textContent = 'Please enter the 6-digit code.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if(Date.now() > otpExpiry){
+    errEl.textContent = 'Code has expired. Please request a new one.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if(entered !== generatedOTP){
+    errEl.textContent = 'Incorrect code. Please try again.';
+    errEl.classList.remove('hidden');
+    document.getElementById('otp-input').style.borderColor = '#cc0000';
+    return;
+  }
+
+  // OTP correct — continue to step 3
+  regData.emailVerified = true;
+  regStep = 3;
+  showRegister(3);
+}
+
+async function submitRegister(){
+  if(members.some(m=>m.username===regData.username)){
+    alert('Username already taken. Please choose another.');
+    return;
+  }
+  showLoader('Uploading documents and submitting registration...');
+
+ const photoFile = regData.photoFile || document.getElementById('photo-inp')?.files[0];
+  const docFrontFile = document.getElementById('doc-front')?.files[0];
+  const docBackFile  = document.getElementById('doc-back')?.files[0];
+
+  const [photourl, docfront, docback] = await Promise.all([
+    uploadFileToGDrive(photoFile,    'photo_reg_'    + regData.username),
+    uploadFileToGDrive(docFrontFile, 'docfront_reg_' + regData.username),
+    uploadFileToGDrive(docBackFile,  'docback_reg_'  + regData.username)
+  ]);
+
+
+  const newMember = {
+    id:              Date.now() + Math.floor(Math.random()*1000),
+    memberid:        'HMS-' + String(members.length+1).padStart(3,'0'),
+    username:        regData.username        || '',
+    password:        await hashPassword(regData.rawPassword || ''),
+    role:            regData.role            || 'Member',
+    fullname:        regData.fullname        || '',
+    gender:          regData.gender          || '',
+    occupation:      regData.occupation      || '',
+    citizenno:       regData.citizenno       || '',
+    issuedate:       regData.issuedate       || '',
+    address:         regData.address         || '',
+    phone:           regData.phone           || '',
+    email:           regData.email           || '',
+    fathername:      regData.fathername      || '',
+    grandfathername: regData.grandfathername || '',
+    spousename:      regData.spousename      || '',
+    doctype:         regData.docType         || '',
+    status:          'pending',
+    joined:          today(),
+    photourl:        photourl || '',
+    docfront:        docfront || '',
+    docback:         docback  || ''
+  };
+
+  await saveToSheet('Members', newMember);
+  members.push(newMember);
+  regData = {};
+  hideLoader();
+
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-header"><h2>Request Submitted! 🎉</h2><p>हातेमालो समुह — Member Registration</p></div>
+    <div class="modal-body" style="text-align:center;padding:32px">
+      <div style="font-size:64px;margin-bottom:16px">🎉</div>
+      <h3 style="color:#16a34a;font-size:18px;font-weight:700;margin-bottom:10px">Thank you, ${newMember.fullname.split(' ')[0]}!</h3>
+      <p style="font-size:14px;color:var(--text);line-height:1.8;margin-bottom:20px">
+        Your account creation request has been successfully submitted to <strong>Hatemalo Samuha</strong>.
+      </p>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin-bottom:18px;text-align:left">
+        <div style="font-size:12px;color:#0369a1;font-weight:700;margin-bottom:10px">📋 WHAT HAPPENS NEXT</div>
+        <div style="font-size:13px;color:#374151;line-height:2">
+          ✅ &nbsp;Your details have been recorded<br>
+          🔍 &nbsp;Admin will review your information and documents<br>
+          📞 &nbsp;You may be contacted for verification<br>
+          🔔 &nbsp;You will be notified once approved<br>
+          ⏱️ &nbsp;Approval takes <strong>1–2 business days</strong>
+        </div>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:#92400e">
+        <strong>Username:</strong> ${newMember.username} &nbsp;|&nbsp;
+        <strong>Document:</strong> ${newMember.doctype||'—'} &nbsp;|&nbsp;
+        <strong>Status:</strong> Pending Verification
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Keep your username and password safe. You will need them to login once approved.
+      </p>
+      <button class="btn btn-p btn-full" onclick="closeModal()">Got it, I'll wait for approval</button>
+    </div>`;
+}
+
+// ── INIT ─────────────────────────────────────────────────
+buildDots();
+slideTimer=setInterval(()=>{slideIdx=(slideIdx+1)%5;goSlide(slideIdx);},3000);
+
+const _role = localStorage.getItem('hs_role');
+const _from = document.referrer;
+const _comingFromApp = _from.includes('admin.html') || _from.includes('member.html');
+
+if (!_comingFromApp) {
+  if (_role === 'admin') window.location.href = 'admin.html';
+  else if (_role === 'member') window.location.href = 'member.html';
+}
+
+// Update navbar based on login state
+const authArea = document.getElementById('nav-auth-area');
+if (_role === 'admin' && _comingFromApp) {
+  authArea.innerHTML = `
+    <a href="admin.html" class="btn-login" style="background:transparent;border:1px solid rgba(255,255,255,0.4);margin-right:6px">← Dashboard</a>
+    <button class="btn-login" onclick="localStorage.removeItem('hs_role');localStorage.removeItem('hs_user');window.location.reload()">Logout</button>
+  `;
+} else if (_role === 'member' && _comingFromApp) {
+  authArea.innerHTML = `
+    <a href="member.html" class="btn-login" style="background:transparent;border:1px solid rgba(255,255,255,0.4);margin-right:6px">← Dashboard</a>
+    <button class="btn-login" onclick="localStorage.removeItem('hs_role');localStorage.removeItem('hs_user');window.location.reload()">Logout</button>
+  `;
+} else if (!_role) {
+  // Not logged in — show default Login/Join
+  authArea.innerHTML = `
+    <a href="#" class="btn-login" onclick="openLoginModal();return false">Login / Join</a>
+  `;
+}
+// If logged in but not coming from app, redirect handles it above — no navbar update needed
+</script>
+</body>
+</html>

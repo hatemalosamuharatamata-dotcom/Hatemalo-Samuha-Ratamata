@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forgot Password — Hatemalo Samuha</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:#f4f7f6;display:flex;
+    align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .card{background:white;border-radius:16px;padding:32px;width:100%;
+    max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
+  .logo{text-align:center;margin-bottom:24px}
+  .logo h1{color:#003366;font-size:20px}
+  .logo p{color:#6b7280;font-size:12px;margin-top:4px}
+  .frow{margin-bottom:16px}
+  .frow label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px}
+  .frow input{width:100%;padding:10px 14px;border:1px solid #e5e7eb;
+    border-radius:8px;font-size:14px;font-family:'Poppins',sans-serif}
+  .frow input:focus{outline:none;border-color:#003366}
+  .btn{width:100%;padding:12px;background:#003366;color:white;border:none;
+    border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:'Poppins',sans-serif;transition:background 0.2s}
+  .btn:hover{background:#002244}
+  .btn:disabled{background:#9ca3af;cursor:not-allowed}
+  .alert{padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:14px}
+  .alert-e{background:#fee2e2;color:#991b1b}
+  .alert-s{background:#dcfce7;color:#166534}
+  .hidden{display:none}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);
+    border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;
+    vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>हातेमालो समुह</h1>
+    <p>Forgot Password</p>
+  </div>
+
+  <div id="main-form">
+    <div style="background:#dbeafe;color:#1e40af;margin-bottom:16px;border-radius:8px;
+      padding:10px 14px;font-size:12px">
+      Enter your registered email address and we'll send you a password reset link.
+    </div>
+    <div class="frow">
+      <label>Email Address *</label>
+      <input type="email" id="reset-email" placeholder="your@email.com"
+        onkeydown="if(event.key==='Enter')sendReset()">
+    </div>
+    <div class="alert alert-e hidden" id="err"></div>
+    <button class="btn" id="send-btn" onclick="sendReset()">Send Reset Link</button>
+    <a href="index.html" style="display:block;text-align:center;
+      margin-top:14px;color:#6b7280;font-size:12px">← Back to Login</a>
+  </div>
+
+  <div id="success-view" class="hidden">
+    <div class="alert alert-s" style="margin-bottom:0">
+      ✅ If that email is registered with us, a reset link has been sent.<br><br>
+      Please check your inbox (and spam folder) and click the link within <strong>1 hour</strong>.
+    </div>
+    <a href="index.html" style="display:block;text-align:center;
+      margin-top:18px;color:#003366;font-size:13px;font-weight:700">
+      → Back to Login
+    </a>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8Lcwa0h_tDLFBWkEKMfOn8hAdJ_5gn9nUzHpuBgruBEYKpdYXB9Vf6fVltk0bvvCi/exec';
+
+async function sendReset() {
+  const email = document.getElementById('reset-email').value.trim();
+  const errEl = document.getElementById('err');
+  const btn   = document.getElementById('send-btn');
+  errEl.classList.add('hidden');
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  // Disable button and show loading
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Sending...';
+
+  try {
+    // Fire the request — we don't block on the response for UX
+    // Google Apps Script sometimes redirects which confuses fetch
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'requestPasswordReset', email })
+    }).catch(() => {}); // silent — email still sends even if response parsing fails
+
+    // Wait 1.5s so it feels like something happened, then show success
+    await new Promise(r => setTimeout(r, 1500));
+
+    document.getElementById('main-form').classList.add('hidden');
+    document.getElementById('success-view').classList.remove('hidden');
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+    errEl.textContent = 'Connection error. Please check your internet and try again.';
+    errEl.classList.remove('hidden');
+  }
+}
+</script>
+</body>
+</html>
