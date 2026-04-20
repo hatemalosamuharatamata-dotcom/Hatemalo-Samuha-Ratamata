@@ -883,7 +883,7 @@ async function verifyMember(id){
   showLoader('Verifying member...');
   m.status='verified';m.memberid=memberId;
   await updateSheet('Members',id,{status:'verified',memberid:memberId});
-  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalogroup.netlify.app'})});}
+  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app'})});}
   addNotification('Account Verified',`${m.fullname} verified — Member ID: ${memberId}`,'success','✅',memberId);
   hideLoader();updateBadges();renderAdminVerify(document.getElementById('admin-main'));
   alert(`✅ ${m.fullname} verified!\nMember ID: ${memberId}`);
@@ -899,7 +899,7 @@ async function verifyMemberFromModal(id){
   if(!confirm(`Verify ${m.fullname} with Member ID: ${memberId}?`))return;
   showLoader('Verifying...');m.status='verified';m.memberid=memberId;
   await updateSheet('Members',id,{status:'verified',memberid:memberId});
-  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalogroup.netlify.app'})});}
+  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app'})});}
   addNotification('Account Verified',`${m.fullname} verified — Member ID: ${memberId}`,'success','✅',memberId);
   hideLoader();document.getElementById('profile-modal-bg').classList.remove('open');
   updateBadges();adminTab('verify');alert(`✅ ${m.fullname} verified!\nMember ID: ${memberId}`);
@@ -2500,7 +2500,7 @@ async function submitBulkAdd(){
     const hashedPass=await hashPassword(mem.pass);
     const m={id:Date.now()+Math.floor(Math.random()*9999),memberid:mem.mid,username:mem.user,password:hashedPass,fullname:mem.name,role:mem.role||'Member',gender:'',occupation:'',citizenno:'',issuedate:'',address:'',phone:'',email:mem.email||'',fathername:'',grandfathername:'',spousename:'',status:'verified',joined:todayBS(),photourl:'',docfront:'',docback:''};
     await saveToSheet('Members',m);APP.members.push(m);
-    if(mem.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:mem.email,name:mem.name,username:mem.user,memberId:mem.mid,password:mem.pass,website:'https://hatemalogroup.netlify.app'})});}
+    if(mem.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:mem.email,name:mem.name,username:mem.user,memberId:mem.mid,password:mem.pass,website:'https://hatemalosamuha.vercel.app'})});}
     created.push({...mem,fullname:mem.name});
   }
   hideLoader();updateBadges();
@@ -2508,7 +2508,7 @@ async function submitBulkAdd(){
   const waCard=document.getElementById('wa-card');const waMsg=document.getElementById('wa-messages');
   waCard.style.display='block';
   waMsg.innerHTML=created.map(mem=>{
-    const msg=`नमस्ते ${mem.name} जी! 🙏\n\nहातेमालो समुहको डिजिटल पोर्टलमा तपाईंको खाता तयार भएको छ।\n\n🌐 Website: https://hatemalogroup.netlify.app\n👤 Username: ${mem.user}\n🔑 Password: ${mem.pass}\n🪪 Member ID: ${mem.mid}\n\nकृपया लगइन गरी आफ्नो विवरण अपडेट गर्नुहोला।\n\nधन्यवाद 🙏`;
+    const msg=`नमस्ते ${mem.name} जी! 🙏\n\nहातेमालो समुहको डिजिटल पोर्टलमा तपाईंको खाता तयार भएको छ।\n\n🌐 Website: https://hatemalosamuha.vercel.app\n👤 Username: ${mem.user}\n🔑 Password: ${mem.pass}\n🪪 Member ID: ${mem.mid}\n\nकृपया लगइन गरी आफ्नो विवरण अपडेट गर्नुहोला।\n\nधन्यवाद 🙏`;
     return`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:700;color:var(--primary)">${mem.name} — ${mem.mid}</div><button onclick="copyMsg(this)" data-msg="${encodeURIComponent(msg)}" style="font-size:11px;padding:4px 10px;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer">📋 Copy</button></div><pre style="font-size:11px;white-space:pre-wrap;color:#374151;font-family:'Poppins',sans-serif;margin:0">${msg}</pre></div>`;
   }).join('');
 }
@@ -3314,7 +3314,7 @@ async function sendSingleEmailReminder(memberId,month,year){
       duesAmount:MONTHLY_DUES,
       loans:loanRows,
       totalDue,
-      website:'https://hatemalogroup.netlify.app'
+      website:'https://hatemalosamuha.vercel.app'
     })});
     hideLoader();
     alert(`✅ Reminder email sent to ${m.fullname}!`);
@@ -3339,7 +3339,7 @@ async function sendAllEmailReminders(){
         to:m.email,name:m.fullname,
         memberId:m.memberid||m.id,
         month,year,amount:MONTHLY_DUES,
-        website:'https://hatemalogroup.netlify.app'
+        website:'https://hatemalosamuha.vercel.app'
       })});
       sent++;
     }catch(e){}
