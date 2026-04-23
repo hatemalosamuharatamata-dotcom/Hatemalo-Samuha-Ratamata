@@ -1148,47 +1148,55 @@ async function recordPayment(){
   if(successEl){successEl.classList.remove('hidden');setTimeout(()=>successEl?.classList.add('hidden'),3000);}
 }
 
-// REPLACE WITH:
 async function bulkMarkPaid(){
   const month=document.getElementById('bulk-month').value;
   const year=document.getElementById('bulk-year').value;
   const amount=Number(document.getElementById('bulk-amount').value);
   const date=document.getElementById('bulk-date').value;
   const selected=[...document.querySelectorAll('.bulk-cb:checked')];
-  if(selected.length===0){
-    await adminAlert('⚠️','No Members Selected','Please select at least one member to mark as paid.',[{label:'OK',value:true,primary:true}]);
-    return;
-  }
+  if(selected.length===0){alert('Please select at least one member.');return;}
 
-  // pre-check duplicates before saving
+  // pre-check duplicates
   const alreadyPaid=[];const toSave=[];
   for(const cb of selected){
     const memId=cb.getAttribute('data-mid');const member=getMember(memId);
-    const dup=checkDuplicateDue(member?.memberid||memId,'monthly',month,year);
-    if(dup)alreadyPaid.push(member?.fullname||memId);
+    const dup=APP.dues.find(d=>
+      (String(d.memberId)===String(member?.memberid||memId))&&
+      d.status==='paid'&&d.type==='monthly'&&
+      String(d.month||'').startsWith(month)&&
+      String(d.year||d.date?.split('-')[0]||'')===String(year)
+    );
+    if(dup) alreadyPaid.push(member?.fullname||memId);
     else toSave.push({memId,member});
   }
 
-  // if some already paid, warn before proceeding
-  if(alreadyPaid.length>0&&toSave.length>0){
-    const proceed=await adminAlert(
-      '⚠️',
-      'Some Already Paid',
-      `<strong>${alreadyPaid.length}</strong> member(s) already have dues recorded for <strong>${month} ${year}</strong>:<br><br>`+
-      `<div style="background:#fef3c7;border-radius:8px;padding:10px;margin-bottom:8px;text-align:left;font-size:12px">${alreadyPaid.join('<br>')}</div>`+
-      `<strong>${toSave.length}</strong> member(s) will be recorded. Continue?`,
-      [{label:'Cancel',value:false,primary:false},{label:'Proceed for '+toSave.length,value:true,primary:true}]
-    );
-    if(!proceed)return;
-  } else if(alreadyPaid.length>0&&toSave.length===0){
-    await adminAlert(
-      '✅',
-      'All Already Paid',
-      `All selected members already have dues recorded for <strong>${month} ${year}</strong>:<br><br>`+
-      `<div style="background:#dcfce7;border-radius:8px;padding:10px;text-align:left;font-size:12px">${alreadyPaid.join('<br>')}</div>`,
-      [{label:'OK',value:true,primary:true}]
+  if(alreadyPaid.length>0&&toSave.length===0){
+    const cols=alreadyPaid.length<=4?alreadyPaid.length:4;
+    showInfoModal('✅','All Already Paid',
+      `All <strong>${alreadyPaid.length}</strong> selected members already paid for <strong>${month} ${year}</strong>:
+      <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;margin-top:12px">
+        ${alreadyPaid.map(n=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--success)">${n}</div>`).join('')}
+      </div>`
     );
     return;
+  }
+
+  // SOME already paid — ask to proceed
+  if(alreadyPaid.length>0){
+    const cols=alreadyPaid.length<=4?alreadyPaid.length:4;
+    const ok=await showConfirmModal('⚠️','Some Already Paid',
+      `<strong>${alreadyPaid.length}</strong> member(s) already paid for <strong>${month} ${year}</strong> — will be skipped:
+      <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px;margin:10px 0">
+        ${alreadyPaid.map(n=>`<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:6px;text-align:center;font-size:11px;font-weight:600;color:#78350f">${n}</div>`).join('')}
+      </div>
+      <strong>${toSave.length}</strong> member(s) will be recorded:
+      <div style="margin:8px 0 4px;font-size:12px;color:#374151">
+        ${toSave.map(({member,memId})=>'• '+(member?.fullname||memId)).join('<br>')}
+      </div>
+      Continue?`,
+      'Cancel','Proceed for '+toSave.length
+    );
+    if(!ok)return;
   }
 
   showLoader('Saving bulk payments...');
@@ -1197,18 +1205,15 @@ async function bulkMarkPaid(){
     const d={id:Date.now()+Math.floor(Math.random()*9999),memberId:member?.memberid||memId,memberName:member?.fullname||'',year,month,amount,date,status:'paid',paymode:document.getElementById('bulk-pay-mode')?.value||'Cash',type:'monthly',note:'Bulk entry'};
     APP.dues.push(d);await saveToSheet('Dues',d);saved.push(member?.fullname||memId);
   }
-  await loadAllData('Refreshing data...');
-  updateBadges();
-  hideLoader();
+  await loadAllData('Refreshing data...');updateBadges();hideLoader();
 
-  // success modal
-  await adminAlert(
-    '✅',
-    'Bulk Payment Recorded',
-    `<strong>${saved.length}</strong> payment(s) successfully recorded for <strong>${month} ${year}</strong>.<br><br>`+
-    (saved.length>0?`<div style="background:#dcfce7;border-radius:8px;padding:10px;text-align:left;font-size:12px;margin-bottom:${alreadyPaid.length>0?'10':'0'}px">${saved.join('<br>')}</div>`:'')  +
-    (alreadyPaid.length>0?`<div style="font-size:12px;color:var(--muted);margin-top:4px">Skipped <strong>${alreadyPaid.length}</strong> already paid: <span style="color:var(--warning)">${alreadyPaid.join(', ')}</span></div>`:''),
-    [{label:'OK',value:true,primary:true}]
+  const cols2=saved.length<=4?saved.length:4;
+  showInfoModal('✅','Bulk Payment Recorded',
+    `<strong>${saved.length}</strong> payment(s) recorded for <strong>${month} ${year}</strong>.
+    <div style="display:grid;grid-template-columns:repeat(${cols2},1fr);gap:6px;margin-top:10px">
+      ${saved.map(n=>`<div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:6px;text-align:center;font-size:11px;font-weight:600;color:var(--success)">${n}</div>`).join('')}
+    </div>
+    ${alreadyPaid.length>0?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Skipped ${alreadyPaid.length} already paid.</div>`:''}`
   );
 }
 
@@ -1889,29 +1894,40 @@ function getFiltered(){
       </div>
       <div id="fhp-${m.id}" style="display:${isOpen?'block':'none'};margin-top:10px">
         <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Transaction History <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">(${transactions.length} records)</span></div>
-        ${transactions.length===0?'<p style="font-size:12px;color:var(--muted);padding:8px 0">No transactions recorded yet.</p>':`
-        <div style="overflow-x:auto"><table class="tbl" style="table-layout:auto">
-          <thead><tr>
-            <th style="width:100px">Date</th><th style="width:90px">Type</th><th style="width:140px">Month/Event</th>
-            <th style="width:100px">Amount</th><th style="width:90px">Mode</th><th style="width:120px">Note</th><th style="width:110px">Action</th>
-          </tr></thead><tbody>
-          ${transactions.map(row=>row._type==='due'?`
-          <tr>
-            <td>${fmtDate(row.date)}</td>
-            <td><span class="badge ${row.type==='monthly'?'bv':row.type==='special'?'ba':row.type==='initial'?'bb':'bb'}">${row.type==='monthly'?'Monthly':row.type==='special'?'Special':row.type==='loan_repayment'?'Loan Repay':row.type==='initial'?'Initial':row.type||'Other'}</span></td>
-            <td style="white-space:normal">${row.month||'—'}</td>
-            <td style="font-weight:700;color:var(--success)">+${fmt(row.amount)}</td>
-            <td>${row.paymode?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;${row.paymode==='Cash'?'background:#dcfce7;color:#166534':row.paymode==='Khalti'?'background:#ede9fe;color:#5b21b6':row.paymode==='eSewa'?'background:#dcfce7;color:#166534':row.paymode==='Bank Transfer'?'background:#dbeafe;color:#1e40af':'background:#dbeafe;color:#1e40af'}">${row.paymode==='Cash'?'💵 Cash':row.paymode==='eSewa'?'🟢 eSewa':row.paymode==='Khalti'?'🟣 Khalti':row.paymode==='Bank Transfer'?'🏦 Bank':'📱 Online'}</span>`:'<span style="font-size:11px;color:var(--muted)">—</span>'}</td>
-            <td style="font-size:11px;color:var(--muted)">${row.note||'—'}</td>
-            <td><div style="display:flex;gap:4px"><button class="btn-sm btn-sm-b" data-id="${row.id}" onclick="editDueRecord(this.dataset.id)">✏️ Edit</button><button class="btn-sm btn-sm-r" data-id="${row.id}" data-name="${(row.memberName||'').replace(/"/g,'')}" onclick="deleteDueRecord(this.dataset.id,this.dataset.name)">🗑 Del</button></div></td>
-          </tr>`:`
-          <tr style="background:#fff5f5">
-            <td>${fmtDate(row.issued)}</td><td><span class="badge br">Loan</span></td>
-            <td style="white-space:normal">${row.purpose||row.loanType||'—'}</td>
-            <td style="font-weight:700;color:var(--secondary)">-${fmt(row.amount)}</td>
-            <td>—</td><td style="color:var(--muted);white-space:normal">${row.rate}% · ${row.months}mo · Repaid: ${fmt(row.repaid)}</td><td>—</td>
-          </tr>`).join('')}
-          </tbody></table></div>`}
+        ${(()=>{
+  if(transactions.length===0) return '<p style="font-size:12px;color:var(--muted);padding:8px 0">No transactions recorded yet.</p>';
+  const TX_PG=10;
+  if(!window['__txPg_'+m.id]) window['__txPg_'+m.id]=1;
+  const txTotal=transactions.length;
+  const txPages=Math.max(1,Math.ceil(txTotal/TX_PG));
+  const txPage=Math.min(window['__txPg_'+m.id],txPages);
+  const txStart=(txPage-1)*TX_PG;
+  const txSlice=transactions.slice(txStart,txStart+TX_PG);
+  const mid=m.id;
+  const rowsHtml=txSlice.map(row=>row._type==='due'?`
+    <tr>
+      <td>${fmtDate(row.date)}</td>
+      <td><span class="badge ${row.type==='monthly'?'bv':row.type==='special'?'ba':row.type==='initial'?'bb':'bb'}">${row.type==='monthly'?'Monthly':row.type==='special'?'Special':row.type==='loan_repayment'?'Loan Repay':row.type==='initial'?'Initial':row.type||'Other'}</span></td>
+      <td style="white-space:normal">${row.month||'—'}</td>
+      <td style="font-weight:700;color:var(--success)">+${fmt(row.amount)}</td>
+      <td>${row.paymode?(()=>{const bg=row.paymode==='Cash'?'background:#dcfce7;color:#166534':row.paymode==='Khalti'?'background:#ede9fe;color:#5b21b6':row.paymode==='eSewa'?'background:#dcfce7;color:#166534':row.paymode==='Bank Transfer'?'background:#dbeafe;color:#1e40af':'background:#dbeafe;color:#1e40af';const lbl=row.paymode==='Cash'?'💵 Cash':row.paymode==='eSewa'?'🟢 eSewa':row.paymode==='Khalti'?'🟣 Khalti':row.paymode==='Bank Transfer'?'🏦 Bank':'📱 Online';return'<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;'+bg+'">'+lbl+'</span>';})():'<span style="font-size:11px;color:var(--muted)">—</span>'}</td>
+      <td style="font-size:11px;color:var(--muted)">${row.note||'—'}</td>
+      <td><div style="display:flex;gap:4px"><button class="btn-sm btn-sm-b" data-id="${row.id}" onclick="editDueRecord(this.dataset.id)">✏️ Edit</button><button class="btn-sm btn-sm-r" data-id="${row.id}" data-name="${(row.memberName||'').replace(/"/g,'')}" onclick="deleteDueRecord(this.dataset.id,this.dataset.name)">🗑 Del</button></div></td>
+    </tr>`:`
+    <tr style="background:#fff5f5">
+      <td>${fmtDate(row.issued)}</td><td><span class="badge br">Loan</span></td>
+      <td style="white-space:normal">${row.purpose||row.loanType||'—'}</td>
+      <td style="font-weight:700;color:var(--secondary)">-${fmt(row.amount)}</td>
+      <td>—</td><td style="color:var(--muted);white-space:normal">${row.rate}% · ${row.months}mo · Repaid: ${fmt(row.repaid)}</td><td>—</td>
+    </tr>`).join('');
+  const pgBtns=Array.from({length:txPages},(_,i)=>i+1).map(p=>
+    '<button onclick="window[\'__txPg_'+mid+'\']='+p+';window.__fhGoTo(window.__fhCurrentPage||1,true)" style="padding:3px 9px;border:1px solid '+(p===txPage?'var(--primary)':'var(--border)')+';border-radius:5px;background:'+(p===txPage?'var(--primary)':'white')+';color:'+(p===txPage?'white':'var(--text)')+';cursor:pointer;font-size:11px;font-weight:'+(p===txPage?'700':'400')+'">'+p+'</button>'
+  ).join('');
+  const prevBtn='<button onclick="window[\'__txPg_'+mid+'\']=Math.max(1,'+(txPage-1)+');window.__fhGoTo(window.__fhCurrentPage||1,true)" '+(txPage===1?'disabled':'')+' style="padding:3px 9px;border:1px solid var(--border);border-radius:5px;background:'+(txPage===1?'#f3f4f6':'white')+';color:'+(txPage===1?'var(--muted)':'var(--primary)')+';cursor:'+(txPage===1?'not-allowed':'pointer')+';font-size:11px;font-weight:600">‹ Prev</button>';
+  const nextBtn='<button onclick="window[\'__txPg_'+mid+'\']=Math.min('+txPages+','+(txPage+1)+');window.__fhGoTo(window.__fhCurrentPage||1,true)" '+(txPage===txPages?'disabled':'')+' style="padding:3px 9px;border:1px solid var(--border);border-radius:5px;background:'+(txPage===txPages?'#f3f4f6':'white')+';color:'+(txPage===txPages?'var(--muted)':'var(--primary)')+';cursor:'+(txPage===txPages?'not-allowed':'pointer')+';font-size:11px;font-weight:600">Next ›</button>';
+  return '<div style="overflow-x:auto"><table class="tbl" style="table-layout:auto"><thead><tr><th style="width:100px">Date</th><th style="width:90px">Type</th><th style="width:140px">Month/Event</th><th style="width:100px">Amount</th><th style="width:90px">Mode</th><th style="width:120px">Note</th><th style="width:110px">Action</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'
+    +(txPages>1?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:8px 0;border-top:1px solid var(--border);flex-wrap:wrap;gap:6px"><div style="font-size:11px;color:var(--muted)">Showing <strong>'+(txStart+1)+'–'+Math.min(txStart+TX_PG,txTotal)+'</strong> of <strong>'+txTotal+'</strong></div><div style="display:flex;gap:5px;flex-wrap:wrap">'+prevBtn+pgBtns+nextBtn+'</div></div>':'');
+})()}
       </div>
     </div>`;
   }
@@ -1941,6 +1957,7 @@ function getFiltered(){
     if(isNowOpen)openPanels.add(String(memberId));else openPanels.delete(String(memberId));
   };
   window.__fhGoTo=function(page,noScroll=false){
+  window.__fhCurrentPage=page;
     document.querySelectorAll('#fh-member-cards .card').forEach(card=>{
       const mid=card.getAttribute('data-member');const panel=card.querySelector('[id^="fhp-"]');
       if(panel){if(panel.style.display!=='none')openPanels.add(mid);else openPanels.delete(mid);}
@@ -2049,7 +2066,7 @@ async function saveDueEdit(dueId){
   await updateSheet('Dues',dueId,{amount,date,type:d.type,month:d.month,note:d.note,year:d.year});
   hideLoader();document.getElementById('profile-modal-bg').classList.remove('open');
   const currentTab=localStorage.getItem('hs_admin_tab')||'dashboard';
-  if(currentTab==='fin-history')renderFinHistory(document.getElementById('admin-main'));
+  if(currentTab==='fin-history'){renderFinHistory(document.getElementById('admin-main'));setTimeout(()=>window.__fhGoTo(window.__fhCurrentPage||1,true),50);}
   else if(currentTab==='funds')renderAdminFunds(document.getElementById('admin-main'));
   else if(currentTab==='dashboard')renderAdminDash(document.getElementById('admin-main'));
   addNotification('Payment Record Updated',`Corrected ${fmt(amount)} entry dated ${date}.`,'success','✏️');
@@ -2061,7 +2078,7 @@ async function deleteDueRecord(dueId,memberName){
   APP.dues=APP.dues.filter(x=>String(x.id)!==String(dueId));
   await deleteFromSheet('Dues',dueId);hideLoader();
   addNotification('Payment Record Deleted',`A payment record was deleted for ${memberName||'a member'}.`,'warning','🗑️');
-  renderFinHistory(document.getElementById('admin-main'));
+  renderFinHistory(document.getElementById('admin-main'));setTimeout(()=>window.__fhGoTo(window.__fhCurrentPage||1,true),50);
 }
 
 // ── EXPENSES ──────────────────────────────────────────────
@@ -3851,6 +3868,25 @@ function adminAlert(icon, title, body, buttons){
       btnsEl.appendChild(b);
     });
     bg.style.display='flex';
+  });
+}
+function showInfoModal(icon,title,body){
+  document.getElementById('pm-header').innerHTML=`<h3>${icon} ${title}</h3><button onclick="document.getElementById('profile-modal-bg').classList.remove('open')" style="background:none;border:none;color:white;font-size:22px;cursor:pointer">&times;</button>`;
+  document.getElementById('pm-body').innerHTML=`<div style="font-size:13px;line-height:1.8">${body}</div><div style="margin-top:20px;text-align:center"><button class="btn btn-p" onclick="document.getElementById('profile-modal-bg').classList.remove('open')">OK</button></div>`;
+  document.getElementById('profile-modal-bg').classList.add('open');
+}
+
+function showConfirmModal(icon,title,body,cancelLabel,okLabel){
+  return new Promise(resolve=>{
+    document.getElementById('pm-header').innerHTML=`<h3>${icon} ${title}</h3><button onclick="document.getElementById('profile-modal-bg').classList.remove('open');resolve(false)" style="background:none;border:none;color:white;font-size:22px;cursor:pointer">&times;</button>`;
+    document.getElementById('pm-body').innerHTML=`
+      <div style="font-size:13px;line-height:1.8;margin-bottom:20px">${body}</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-o" onclick="document.getElementById('profile-modal-bg').classList.remove('open');window.__cmResolve(false)">${cancelLabel}</button>
+        <button class="btn btn-p" onclick="document.getElementById('profile-modal-bg').classList.remove('open');window.__cmResolve(true)">${okLabel}</button>
+      </div>`;
+    window.__cmResolve=resolve;
+    document.getElementById('profile-modal-bg').classList.add('open');
   });
 }
 </script>
