@@ -182,7 +182,7 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8Lcwa0h_tDLFBWkEKMfOn8hAdJ_5gn9nUzHpuBgruBEYKpdYXB9Vf6fVltk0bvvCi/exec';
 
-let APP = {currentUser:null,members:[],dues:[],loans:[],notifications:[],loanRequests:[],meetings:[]};
+let APP = {currentUser:null,members:[],dues:[],loans:[],expenses:[],notifications:[],loanRequests:[],meetings:[],loanRepayments:[],paymentRequests:[],profileRequests:[]};
 let CHARTS = {};
 // ── NOTIFICATION READ STATE (persisted in localStorage) ──
 function _notifKey(){
@@ -212,6 +212,10 @@ function calcLoan(amount, rate, months){
   const monthlyInstallment = Math.round(totalPayable / Number(months));
   return { principal, interest, totalPayable, monthlyInstallment };
 } 
+function cleanNum(v){
+  if(v===null||v===undefined)return 0;
+  return Number(String(v).replace(/,/g,''))||0;
+}
 
 // ── AUTH CHECK ────────────────────────────────────────────
 const _savedRole = localStorage.getItem('hs_role');
@@ -310,6 +314,8 @@ if(data.loanRequests) APP.loanRequests=data.loanRequests;
     if(data.profileRequests) APP.profileRequests=data.profileRequests;
     if(data.paymentRequests) APP.paymentRequests=data.paymentRequests;
 if(data.meetings) APP.meetings=data.meetings;
+if(data.expenses) APP.expenses=data.expenses;
+if(data.loanRepayments) APP.loanRepayments=data.loanRepayments;
     if(fresh) APP.currentUser=fresh;
 }catch(e){
     console.warn('Data fetch failed or timed out, using cached data',e);
@@ -656,7 +662,13 @@ function renderOverview(el,m,myDues,myLoans){
       <span style="font-size:18px">📋</span>
       <div>
         <div style="font-weight:700">${activeLoans.length} active loan${activeLoans.length>1?'s':''} — installment due this month</div>
-        <div style="font-size:11px;margin-top:2px">Monthly installment: <strong>${activeLoans.map(l=>fmt(Number(l.monthlyInstallment)||calcLoan(l.amount,l.rate,l.months).monthlyInstallment)).join(', ')}</strong></div>
+        <div style="font-size:11px;margin-top:2px">Monthly installment: <strong>${activeLoans.map(l=>{
+  const raw=String(l.monthlyInstallment||'').replace(/,/g,'');
+  return fmt(Number(raw)||calcLoan(
+    String(l.amount).replace(/,/g,''),
+    l.rate,l.months
+  ).monthlyInstallment);
+}).join(', ')}</strong></div>
       </div>
     </div>`:''}
 

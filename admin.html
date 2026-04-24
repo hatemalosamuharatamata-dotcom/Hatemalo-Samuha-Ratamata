@@ -168,6 +168,7 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
     <button class="sb-btn" onclick="adminTab('dues-reminder',this)"><span class="ic">📬</span>Dues Reminder<span class="bc" id="reminder-bc"></span></button>
     <button class="sb-btn" onclick="adminTab('notices',this)"><span class="ic">🔔</span>Notice Board</button>
     <button class="sb-btn" onclick="adminTab('meetings',this)"><span class="ic">📅</span>Meetings</button>
+    <button class="sb-btn" onclick="adminTab('documents',this)"><span class="ic">📁</span>Documents</button>
     <div class="sb-label">Reports</div>
     <button class="sb-btn" onclick="adminTab('report',this)"><span class="ic">📈</span>Fund Report</button>
   </div>
@@ -470,6 +471,7 @@ function adminTab(tab,btn){
   else if(tab==='fin-history')renderFinHistory(el);
   else if(tab==='loans-admin')renderAdminLoans(el);
   else if(tab==='dues-reminder')renderDuesReminder(el);
+  else if(tab==='documents')renderAdminDocuments(el);
   else if(tab==='payment-verify')renderPaymentVerify(el);
   else if(tab==='notices')renderAdminNotices(el);
   else if(tab==='expenses')renderAdminExpenses(el);
@@ -567,7 +569,7 @@ function renderAdminDash(el){
     // ── Chart 3: Loan Overview horizontal bar ──
     const lc=document.getElementById('c-loans');
     if(lc&&APP.loans.length){
-      const loanLabels=APP.loans.map(l=>{const m=getMember(l.memberId);return(m?.fullname||l.memberId||'?').split(' ')[0];});
+      const loanLabels=APP.loans.filter(l=>l.status==='active').map(l=>{const m=getMember(l.memberId);return(m?.fullname||l.memberId||'?').split(' ')[0];});
       CHARTS['c-loans']=new Chart(lc,{type:'bar',data:{labels:loanLabels,datasets:[{label:'Outstanding',data:APP.loans.map(l=>Math.max(0,Number(l.amount)-Number(l.repaid))),backgroundColor:'#ef4444',borderRadius:4},{label:'Repaid',data:APP.loans.map(l=>Number(l.repaid)),backgroundColor:'#22c55e',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{callback:v=>'Rs '+v.toLocaleString()}},y:{stacked:true,grid:{display:false}}}}});
     } else if(lc) lc.parentElement.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;font-size:13px">No loan data yet.</p>';
 
@@ -925,6 +927,200 @@ async function deleteMember(id){
   APP.members=APP.members.filter(x=>String(x.id)!==String(id));
   await deleteFromSheet('Members',id);
   hideLoader();updateBadges();renderAdminVerify(document.getElementById('admin-main'));
+}
+function renderAdminDocuments(el){
+  const categories=['General','Legal','Financial','Meeting Minutes','Government','Membership','Other'];
+  el.innerHTML=`
+    <div class="ph"><h2>📁 Company Documents</h2><p>Store and manage all group documents</p></div>
+    <div class="sg2">
+      <div class="card">
+        <div class="card-title" id="doc-form-title">Upload New Document</div>
+        <input type="hidden" id="doc-edit-id" value="">
+        <div class="frow"><label>Document Title <span style="color:var(--secondary)">*</span></label>
+          <input type="text" id="doc-title" placeholder="e.g. समुहको विधान, Meeting Minutes 2081">
+        </div>
+        <div class="frow"><label>Category</label>
+          <select id="doc-cat" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+            ${categories.map(c=>`<option>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="frow"><label>Description</label>
+          <textarea id="doc-desc" rows="2" placeholder="Brief description of this document"></textarea>
+        </div>
+        <div class="frow"><label>File <span style="color:var(--secondary)">*</span></label>
+          <div class="upload-box" onclick="document.getElementById('doc-file-inp').click()" id="doc-upload-box">
+            <div id="doc-upload-icon" style="font-size:26px;margin-bottom:6px">📎</div>
+            <div id="doc-upload-name" style="font-size:13px;font-weight:600">Click to select file</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">PDF, Word, Image, Excel — any format, max 5MB</div>
+          </div>
+          <input type="file" id="doc-file-inp" style="display:none" accept="*/*">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-p btn-full" id="doc-submit-btn" onclick="saveDocument()">📤 Upload Document</button>
+          <button class="btn btn-o hidden" id="doc-cancel-btn" onclick="cancelDocEdit()">Cancel</button>
+        </div>
+        <div class="alert alert-s hidden" id="doc-ok" style="margin-top:10px">✅ Document saved!</div>
+        <div class="alert alert-e hidden" id="doc-err" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Filter by Category
+          <select id="doc-filter" onchange="renderDocList()" style="font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-weight:400">
+            <option value="all">All Categories</option>
+            ${categories.map(c=>`<option>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div id="doc-list"></div>
+      </div>
+    </div>`;
+
+  // file input handler
+  setTimeout(()=>{
+    const inp=document.getElementById('doc-file-inp');
+    if(inp)inp.addEventListener('change',function(){
+      if(!this.files||!this.files[0])return;
+      const f=this.files[0];
+      document.getElementById('doc-upload-box').style.borderColor='var(--success)';
+      document.getElementById('doc-upload-box').style.background='#f0fdf4';
+      document.getElementById('doc-upload-icon').textContent=getFileIcon(f.name);
+      document.getElementById('doc-upload-name').textContent=f.name+' ('+formatFileSize(f.size)+')';
+    });
+  },100);
+
+  renderDocList();
+}
+
+function getFileIcon(name){
+  const ext=(name||'').split('.').pop().toLowerCase();
+  const icons={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',mp4:'🎬',mp3:'🎵',zip:'🗜️',rar:'🗜️'};
+  return icons[ext]||'📎';
+}
+
+function formatFileSize(bytes){
+  if(!bytes)return'';
+  if(bytes<1024)return bytes+'B';
+  if(bytes<1024*1024)return(bytes/1024).toFixed(1)+'KB';
+  return(bytes/(1024*1024)).toFixed(1)+'MB';
+}
+
+function renderDocList(){
+  const filter=document.getElementById('doc-filter')?.value||'all';
+  const docs=(APP.documents||[]).filter(d=>filter==='all'||d.category===filter)
+    .slice().sort((a,b)=>String(b.uploadedOn||'').localeCompare(String(a.uploadedOn||'')));
+  const el=document.getElementById('doc-list');
+  if(!el)return;
+  if(docs.length===0){
+    el.innerHTML='<div class="alert alert-i" style="margin-top:8px">No documents found.</div>';
+    return;
+  }
+  el.innerHTML=docs.map(d=>`
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;border-radius:8px;background:#f0f4ff;border:1px solid #c7d7ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
+        ${getFileIcon(d.fileName||d.title)}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">${d.title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          <span class="badge bb" style="font-size:10px">${d.category||'General'}</span>
+          &nbsp;·&nbsp; ${fmtDate(d.uploadedOn)}
+          ${d.uploadedBy?'&nbsp;·&nbsp; by '+d.uploadedBy:''}
+        </div>
+        ${d.description?`<div style="font-size:12px;color:#374151;margin-top:4px">${d.description}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        ${d.fileUrl?`<a href="${d.fileUrl}" target="_blank" class="btn-sm btn-sm-b" style="text-decoration:none;text-align:center">⬇ Open</a>`:''}
+        <button class="btn-sm" style="border-color:#fbbf24;color:#92400e;background:#fef3c7" onclick="startEditDoc('${d.id}')">✏️ Edit</button>
+        <button class="btn-sm btn-sm-r" onclick="deleteDoc('${d.id}')">🗑 Del</button>
+      </div>
+    </div>`).join('');
+}
+
+async function saveDocument(){
+  const errEl=document.getElementById('doc-err');
+  const okEl=document.getElementById('doc-ok');
+  errEl.classList.add('hidden');okEl.classList.add('hidden');
+  const title=document.getElementById('doc-title')?.value.trim();
+  const editId=document.getElementById('doc-edit-id')?.value;
+  if(!title){errEl.textContent='Please enter a document title.';errEl.classList.remove('hidden');return;}
+  const file=document.getElementById('doc-file-inp')?.files[0];
+  if(!editId&&!file){errEl.textContent='Please select a file to upload.';errEl.classList.remove('hidden');return;}
+  if(file&&file.size>5*1024*1024){errEl.textContent='File too large. Maximum 5MB.';errEl.classList.remove('hidden');return;}
+  showLoader('Uploading document...');
+  let fileUrl='';let fileName='';let mimeType='';
+  if(file){
+    fileName=file.name;mimeType=file.type||'application/octet-stream';
+    const reader=new FileReader();
+    const base64=await new Promise(resolve=>{reader.onload=e=>resolve(e.target.result.split(',')[1]);reader.readAsDataURL(file);});
+    try{
+      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:'doc_'+Date.now()+'_'+file.name,base64Data:base64,mimeType})});
+      const data=await res.json();
+      fileUrl=data.viewUrl||data.url||'';
+    }catch(e){hideLoader();errEl.textContent='Upload failed. Try again.';errEl.classList.remove('hidden');return;}
+  }
+  showLoader('Saving record...');
+  if(editId){
+    const d=(APP.documents||[]).find(x=>String(x.id)===String(editId));
+    if(d){
+      d.title=title;d.category=document.getElementById('doc-cat').value;
+      d.description=document.getElementById('doc-desc').value.trim();
+      if(fileUrl){d.fileUrl=fileUrl;d.fileName=fileName;d.mimeType=mimeType;}
+      await updateSheet('Documents',editId,{title:d.title,category:d.category,description:d.description,...(fileUrl?{fileUrl,fileName,mimeType}:{})});
+    }
+  } else {
+    const doc={
+      id:Date.now()+Math.floor(Math.random()*999),
+      title,
+      category:document.getElementById('doc-cat').value,
+      description:document.getElementById('doc-desc').value.trim(),
+      fileUrl,fileName,mimeType,
+      uploadedOn:todayBS(),
+      uploadedBy:'Admin'
+    };
+    if(!APP.documents)APP.documents=[];
+    APP.documents.push(doc);
+    await saveToSheet('Documents',doc);
+  }
+  hideLoader();
+  cancelDocEdit();
+  okEl.classList.remove('hidden');
+  setTimeout(()=>okEl.classList.add('hidden'),3000);
+  renderDocList();
+}
+
+function startEditDoc(id){
+  const d=(APP.documents||[]).find(x=>String(x.id)===String(id));if(!d)return;
+  document.getElementById('doc-title').value=d.title||'';
+  document.getElementById('doc-desc').value=d.description||'';
+  document.getElementById('doc-cat').value=d.category||'General';
+  document.getElementById('doc-edit-id').value=id;
+  document.getElementById('doc-form-title').textContent='✏️ Edit Document';
+  document.getElementById('doc-submit-btn').textContent='💾 Save Changes';
+  document.getElementById('doc-cancel-btn').classList.remove('hidden');
+  document.getElementById('doc-upload-name').textContent=d.fileName||'No new file selected (keep existing)';
+  document.getElementById('doc-upload-icon').textContent=getFileIcon(d.fileName||'');
+  document.getElementById('doc-title').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function cancelDocEdit(){
+  document.getElementById('doc-title').value='';
+  document.getElementById('doc-desc').value='';
+  document.getElementById('doc-edit-id').value='';
+  document.getElementById('doc-form-title').textContent='Upload New Document';
+  document.getElementById('doc-submit-btn').textContent='📤 Upload Document';
+  document.getElementById('doc-cancel-btn').classList.add('hidden');
+  document.getElementById('doc-upload-icon').textContent='📎';
+  document.getElementById('doc-upload-name').textContent='Click to select file';
+  document.getElementById('doc-upload-box').style.borderColor='';
+  document.getElementById('doc-upload-box').style.background='';
+  const inp=document.getElementById('doc-file-inp');if(inp)inp.value='';
+}
+
+async function deleteDoc(id){
+  if(!confirm('Delete this document?'))return;
+  showLoader('Deleting...');
+  APP.documents=(APP.documents||[]).filter(x=>String(x.id)!==String(id));
+  await deleteFromSheet('Documents',id);
+  hideLoader();renderDocList();
 }
 
 // ── FUND INPUT ────────────────────────────────────────────
@@ -1296,8 +1492,11 @@ function renderAdminLoans(el){
         </tr>`;}).join('')}
         </tbody></table></div>`}
     </div>
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-title">Active Loans</div>
+<div class="card" style="margin-bottom:16px">
+      <div class="card-title">Active Loans (${APP.loans.filter(l=>l.status==='active').length})
+        <button class="btn btn-p" style="font-size:12px;padding:5px 14px" onclick="showAddLoanForm()">+ Add Loan</button>
+      </div>
+
       <div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr>
           <th style="${thStyle}">Member</th><th style="${thStyle}">Principal</th><th style="${thStyle}">Interest</th>
@@ -1305,7 +1504,7 @@ function renderAdminLoans(el){
           <th style="${thStyle}">Remaining</th><th style="${thStyle}">Rate</th><th style="${thStyle}">Status</th><th style="${thStyle}">Action</th>
         </tr></thead><tbody>
         ${APP.loans.length===0?'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">No active loans.</td></tr>':
-        APP.loans.map(l=>{
+        APP.loans.filter(l=>l.status==='active').map(l=>{
           const calc=calcLoan(l.amount,l.rate,l.months);
           const total=Number(l.totalPayable)||calc.totalPayable;
           const monthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
@@ -1324,11 +1523,50 @@ function renderAdminLoans(el){
             <td style="${tdStyle};font-weight:700;color:${remaining>0?'var(--secondary)':'var(--success)'}">${remaining>0?fmt(remaining):'✅ Done'}</td>
             <td style="${tdStyle}">${l.rate}%</td>
             <td style="${tdStyle}"><span class="badge ${l.status==='settled'?'bv':'bb'}" style="font-size:10px">${l.status}</span></td>
-            <td style="${tdStyle}"><div style="display:flex;flex-direction:column;gap:4px"><button class="btn-sm btn-sm-b" style="white-space:nowrap" onclick="viewLoanDetail('${l.id}')">📊 View</button>${l.status!=='settled'?`<button class="btn-sm btn-sm-g" style="white-space:nowrap" onclick="recordRepayment('${l.id}')">💰 Repay</button>`:''}<button class="btn-sm" style="white-space:nowrap;border-color:#fbbf24;color:#92400e;background:#fef3c7" onclick="editLoan('${l.id}')">✏️ Edit</button><button class="btn-sm btn-sm-r" style="white-space:nowrap" onclick="deleteLoan('${l.id}')">🗑 Del</button></div></td>  
+            <td style="${tdStyle}"><div style="display:flex;flex-direction:column;gap:4px"><button class="btn-sm btn-sm-b" style="white-space:nowrap" onclick="viewLoanDetail('${l.id}')">📊 View</button>
+${l.pdfUrl?`<a href="${l.pdfUrl}" target="_blank" class="btn-sm btn-sm-b" style="white-space:nowrap;text-decoration:none">📄 Application</a>`:''}
+${l.collateralUrl?`<a href="${l.collateralUrl}" target="_blank" class="btn-sm btn-sm-b" style="white-space:nowrap;text-decoration:none">🪪 Collateral</a>`:''}${l.status!=='settled'?`<button class="btn-sm btn-sm-g" style="white-space:nowrap" onclick="recordRepayment('${l.id}')">💰 Repay</button>`:''}<button class="btn-sm" style="white-space:nowrap;border-color:#fbbf24;color:#92400e;background:#fef3c7" onclick="editLoan('${l.id}')">✏️ Edit</button><button class="btn-sm btn-sm-r" style="white-space:nowrap" onclick="deleteLoan('${l.id}')">🗑 Del</button></div></td>  
             </tr>`;
         }).join('')}
         </tbody></table></div>
     </div>
+<div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="color:var(--success)">
+        ✅ Settled Loans (${APP.loans.filter(l=>l.status==='settled').length})<button class="btn btn-o" style="font-size:12px;padding:5px 14px" onclick="const t=document.getElementById('settled-loans-tbl');t.style.display=t.style.display==='none'?'':'none'">Toggle</button>
+        </div>
+      ${APP.loans.filter(l=>l.status==='settled').length===0
+        ? '<p style="font-size:13px;color:var(--muted)">No settled loans yet.</p>'
+        : `<div class="tbl-wrap" id="settled-loans-tbl"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="${thStyle}">Member</th><th style="${thStyle}">Principal</th>
+          <th style="${thStyle}">Total Paid</th><th style="${thStyle}">Monthly</th><th style="${thStyle}">Rate</th>
+          <th style="${thStyle}">Issued</th><th style="${thStyle}">Status</th><th style="${thStyle}">Action</th>
+        </tr></thead>
+        <tbody>
+        ${APP.loans.filter(l=>l.status==='settled').map(l=>{
+          const calc=calcLoan(l.amount,l.rate,l.months);
+          const total=Number(l.totalPayable)||calc.totalPayable;
+          const monthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
+          const interest=Number(l.interest)||calc.interest;
+          const mem=getMember(l.memberId);
+          return`<tr style="background:#f0fdf4">
+            <td style="${tdStyle}"><div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${ini(mem?.fullname||'?')}</div><div><div style="font-weight:700;color:var(--primary);font-size:12px">${mem?.fullname||l.memberId||'?'}</div><div style="font-size:10px;color:var(--muted)">${mem?.memberid||'—'}</div></div></div></td>
+            <td style="${tdStyle}">${fmt(l.amount)}</td>
+            <td style="${tdStyle};font-weight:700;color:var(--success)">${fmt(total)}</td>
+            <td style="${tdStyle}">${fmt(monthly)}/mo</td>
+            <td style="${tdStyle}">${l.rate}%</td>
+            <td style="${tdStyle}">${fmtDate(l.issued)}</td>
+            <td style="${tdStyle}"><span class="badge bv">✅ Settled</span></td>
+            <td style="${tdStyle}"><div style="display:flex;flex-direction:column;gap:4px">
+              <button class="btn-sm btn-sm-b" onclick="viewLoanDetail('${l.id}')">📊 View</button>
+${l.pdfUrl?`<a href="${l.pdfUrl}" target="_blank" class="btn-sm btn-sm-b" style="white-space:nowrap;text-decoration:none">📄 Doc</a>`:''}
+              <button class="btn-sm" style="border-color:#fbbf24;color:#92400e;background:#fef3c7" onclick="editLoan('${l.id}')">✏️ Edit</button>
+              <button class="btn-sm btn-sm-r" onclick="deleteLoan('${l.id}')">🗑 Del</button>
+            </div></td>
+          </tr>`;
+        }).join('')}
+        </tbody></table></div>`}
+</div>
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
         Loan Request History
@@ -1581,7 +1819,6 @@ async function saveLoanEdit(loanId){
   const months=Number(document.getElementById('el-months').value);
   const repaid=Number(document.getElementById('el-repaid').value||0);
   const issued=document.getElementById('el-issued').value.trim();
-  const status=document.getElementById('el-status').value;
   const purpose=document.getElementById('el-purpose').value.trim();
   if(!amount||amount<=0){errEl.textContent='Please enter a valid principal amount.';errEl.classList.remove('hidden');return;}
   if(!rate||rate<=0){errEl.textContent='Please enter a valid interest rate.';errEl.classList.remove('hidden');return;}
@@ -1590,6 +1827,7 @@ async function saveLoanEdit(loanId){
   if(!confirm(`Save changes to this loan?\n\nPrincipal: ${fmt(amount)} | Rate: ${rate}% | Duration: ${months} months`))return;
   showLoader('Saving loan changes...');
   const calc=calcLoan(amount,rate,months);
+  const status=repaid>=calc.totalPayable?'settled':'active';
   l.amount=amount;l.rate=rate;l.months=months;l.repaid=repaid;
   l.interest=calc.interest;l.totalPayable=calc.totalPayable;
   l.monthlyInstallment=calc.monthlyInstallment;
@@ -1623,6 +1861,181 @@ async function deleteLoan(loanId){
   hideLoader();
   renderAdminLoans(document.getElementById('admin-main'));
 }
+function showAddLoanForm(){
+  const verSorted=memberSort(APP.members.filter(m=>m.status==='verified'));
+  document.getElementById('pm-header').innerHTML=`<h3>Add New Loan</h3><button onclick="document.getElementById('profile-modal-bg').classList.remove('open')" style="background:none;border:none;color:white;font-size:22px;cursor:pointer">&times;</button>`;
+  document.getElementById('pm-body').innerHTML=`
+    <div class="frow"><label>Member <span style="color:var(--secondary)">*</span></label>
+      <select id="al-member" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        ${verSorted.map(m=>`<option value="${m.id}">${m.fullname} (${m.memberid||'—'})</option>`).join('')}
+      </select>
+    </div>
+<div class="frow"><label>Loan Type</label>
+      <select id="al-type" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <option>व्यवसायिक ऋण</option>
+        <option>महिला स्वरोजगार ऋण</option>
+        <option>व्यावसायिक कृषि ऋण</option>
+        <option>घरजग्गा ऋण</option>
+        <option>शैक्षिक ऋण</option>
+        <option>मोटरसाईकल ऋण</option>
+        <option>पुन: कर्जा ऋण</option>
+        <option>स्वास्थ्य ऋण</option>
+        <option>लघु उद्यमी ऋण</option>
+        <option>बचत जमानी ऋण</option>
+        <option>कृषि तथा पशुपालन ऋण</option>
+        <option>विपद शहुलियत ऋण</option>
+        <option>अन्य</option>
+      </select>
+    </div>
+    <div class="fgrid2">
+      <div class="frow"><label>Principal Amount (Rs) <span style="color:var(--secondary)">*</span></label>
+        <input type="number" id="al-amount" placeholder="e.g. 50000" oninput="previewNewLoanCalc()">
+      </div>
+      <div class="frow"><label>Interest Rate (% per annum) <span style="color:var(--secondary)">*</span></label>
+        <input type="number" id="al-rate" value="12" step="0.5" oninput="previewNewLoanCalc()">
+      </div>
+      <div class="frow"><label>Duration (months) <span style="color:var(--secondary)">*</span></label>
+        <input type="number" id="al-months" value="12" oninput="previewNewLoanCalc()">
+      </div>
+      <div class="frow"><label>Amount Already Repaid (Rs)</label>
+        <input type="number" id="al-repaid" value="0" oninput="previewNewLoanCalc()">
+      </div>
+    </div>
+    <div class="frow"><label>Issued Date (BS) <span style="color:var(--secondary)">*</span></label>
+      <input type="text" id="al-issued" value="${todayBS()}" maxlength="10" oninput="formatBSInput(this)" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="frow"><label>Purpose / Notes</label>
+      <input type="text" id="al-purpose" placeholder="Optional — what the loan is for">
+    </div>
+    <div class="fsect">Loan Documents</div>
+    <div class="frow"><label>Loan Application Form (PDF or Image)</label>
+      <div class="upload-box" onclick="document.getElementById('al-doc-inp').click()" id="al-doc-box">
+        <div id="al-doc-icon" style="font-size:22px;margin-bottom:4px">📄</div>
+        <div id="al-doc-name" style="font-size:13px;font-weight:600">Click to upload application form</div>
+        <div style="font-size:11px;color:var(--muted)">PDF or image, max 2MB</div>
+      </div>
+      <input type="file" id="al-doc-inp" accept=".pdf,image/*" style="display:none">
+    </div>
+    <div class="frow"><label>Collateral / Supporting Document (optional)</label>
+      <div class="upload-box" onclick="document.getElementById('al-col-inp').click()" id="al-col-box">
+        <div id="al-col-icon" style="font-size:22px;margin-bottom:4px">🪪</div>
+        <div id="al-col-name" style="font-size:13px;font-weight:600">Click to upload collateral document</div>
+        <div style="font-size:11px;color:var(--muted)">PDF or image, max 2MB</div>
+      </div>
+      <input type="file" id="al-col-inp" accept=".pdf,image/*" style="display:none">
+    </div>
+
+    <div id="al-preview" style="display:none;background:#f0f4ff;border:1px solid #c7d7ff;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">Calculated Values</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">INTEREST</div><div style="font-size:15px;font-weight:700;color:var(--warning)" id="al-pre-interest">—</div></div>
+        <div><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">TOTAL PAYABLE</div><div style="font-size:15px;font-weight:700;color:var(--primary)" id="al-pre-total">—</div></div>
+        <div><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">MONTHLY</div><div style="font-size:15px;font-weight:700;color:var(--primary)" id="al-pre-monthly">—</div></div>
+        <div><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">REMAINING</div><div style="font-size:15px;font-weight:700;color:var(--secondary)" id="al-pre-remaining">—</div></div>
+      </div>
+    </div>
+
+    <div class="alert alert-e hidden" id="al-err"></div>
+    <div class="btn-row">
+      <button class="btn btn-o" onclick="document.getElementById('profile-modal-bg').classList.remove('open')">Cancel</button>
+      <button class="btn btn-p" onclick="saveNewLoan()">💾 Save Loan</button>
+    </div>`;
+  document.getElementById('profile-modal-bg').classList.add('open');
+  setTimeout(()=>{
+    const docInp=document.getElementById('al-doc-inp');
+    if(docInp)docInp.addEventListener('change',function(){
+      if(this.files&&this.files[0]){
+        document.getElementById('al-doc-box').style.borderColor='var(--success)';
+        document.getElementById('al-doc-box').style.background='#f0fdf4';
+        document.getElementById('al-doc-icon').textContent='✅';
+        document.getElementById('al-doc-name').textContent=this.files[0].name;
+      }
+    });
+    const colInp=document.getElementById('al-col-inp');
+    if(colInp)colInp.addEventListener('change',function(){
+      if(this.files&&this.files[0]){
+        document.getElementById('al-col-box').style.borderColor='var(--success)';
+        document.getElementById('al-col-box').style.background='#f0fdf4';
+        document.getElementById('al-col-icon').textContent='✅';
+        document.getElementById('al-col-name').textContent=this.files[0].name;
+      }
+    });
+  },100);
+  previewNewLoanCalc();
+}
+
+function previewNewLoanCalc(){
+  const amount=Number(document.getElementById('al-amount')?.value||0);
+  const rate=Number(document.getElementById('al-rate')?.value||0);
+  const months=Number(document.getElementById('al-months')?.value||0);
+  const repaid=Number(document.getElementById('al-repaid')?.value||0);
+  const preview=document.getElementById('al-preview');
+  if(!amount||!rate||!months){if(preview)preview.style.display='none';return;}
+  const calc=calcLoan(amount,rate,months);
+  if(preview)preview.style.display='block';
+  document.getElementById('al-pre-interest').textContent=fmt(calc.interest);
+  document.getElementById('al-pre-total').textContent=fmt(calc.totalPayable);
+  document.getElementById('al-pre-monthly').textContent=fmt(calc.monthlyInstallment);
+  document.getElementById('al-pre-remaining').textContent=fmt(Math.max(0,calc.totalPayable-repaid));
+}
+
+async function saveNewLoan(){
+  const errEl=document.getElementById('al-err');errEl.classList.add('hidden');
+  const memId=document.getElementById('al-member').value;
+  const member=getMember(memId);
+  const amount=Number(document.getElementById('al-amount').value);
+  const rate=Number(document.getElementById('al-rate').value);
+  const months=Number(document.getElementById('al-months').value);
+  const repaid=Number(document.getElementById('al-repaid').value||0);
+  const issued=document.getElementById('al-issued').value.trim();
+  const purpose=document.getElementById('al-purpose').value.trim();
+  const loanType=document.getElementById('al-type').value;
+
+  if(!amount||amount<=0){errEl.textContent='Please enter a valid principal amount.';errEl.classList.remove('hidden');return;}
+  if(!rate||rate<=0){errEl.textContent='Please enter a valid interest rate.';errEl.classList.remove('hidden');return;}
+  if(!months||months<=0){errEl.textContent='Please enter a valid duration.';errEl.classList.remove('hidden');return;}
+  if(!issued){errEl.textContent='Please enter the issued date.';errEl.classList.remove('hidden');return;}
+
+  const calc=calcLoan(amount,rate,months);
+  const remaining=Math.max(0,calc.totalPayable-repaid);
+  const status=repaid>=calc.totalPayable?'settled':'active';
+
+  if(!confirm(`Add loan for ${member?.fullname}?\n\nPrincipal: ${fmt(amount)} | Rate: ${rate}% | ${months} months\nMonthly: ${fmt(calc.monthlyInstallment)} | Total: ${fmt(calc.totalPayable)}`))return;
+
+showLoader('Uploading documents...');
+  const docFile=document.getElementById('al-doc-inp')?.files[0];
+  const colFile=document.getElementById('al-col-inp')?.files[0];
+  const docUrl=docFile?await uploadFileToGDrive(docFile,'loan_application_'+Date.now()):null;
+  const colUrl=colFile?await uploadFileToGDrive(colFile,'loan_collateral_'+Date.now()):null;
+  showLoader('Saving loan...');
+  const newLoan={
+    id:Date.now()+Math.floor(Math.random()*9999),
+    memberId:member?.memberid||memId,
+    amount,
+    rate,
+    months,
+    interest:calc.interest,
+    totalPayable:calc.totalPayable,
+    monthlyInstallment:calc.monthlyInstallment,
+    repaid,
+    issued,
+    status,
+    purpose:purpose||loanType,
+    loanType,
+    pdfUrl:docUrl||'',
+    collateralUrl:colUrl||''
+  };
+  APP.loans.push(newLoan);
+  await saveToSheet('Loans',newLoan);
+  addNotification('Loan Added',`${fmt(amount)} loan added for ${member?.fullname||memId} at ${rate}% for ${months} months.`,'loan','📋',member?.memberid||memId);
+  await loadAllData('Refreshing...');
+  updateBadges();
+  hideLoader();
+  document.getElementById('profile-modal-bg').classList.remove('open');
+  renderAdminLoans(document.getElementById('admin-main'));
+  alert(`✅ Loan saved for ${member?.fullname}!`);
+}
+
 
 // ── REPORT ────────────────────────────────────────────────
 function renderAdminReport(el){
