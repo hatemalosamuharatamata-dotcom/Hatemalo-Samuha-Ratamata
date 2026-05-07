@@ -1429,13 +1429,43 @@ async function recordSpecial(){
 
 }
 
-// ── SYNC LOAN REPAID ──────────────────────────────────────
 function syncLoanRepaid(){
   APP.loans.forEach(l=>{
     const lrSheet=APP.loanRepayments||[];
+
+    // Priority 1: LoanRepayments sheet by loanId
     let payments=lrSheet.filter(r=>String(r.loanId)===String(l.id));
-    if(payments.length===0)payments=APP.dues.filter(d=>String(d.loanId)===String(l.id)&&d.type==='loan_repayment');
-    if(payments.length===0){const mem=getMember(l.memberId);const memKey=mem?.memberid||l.memberId;payments=APP.dues.filter(d=>(String(d.memberId)===String(memKey)||String(d.memberId)===String(mem?.id))&&d.type==='loan_repayment');}
+
+    // Priority 2: Dues sheet by loanId column
+    if(payments.length===0)
+      payments=APP.dues.filter(d=>
+        String(d.loanId)===String(l.id)&&d.type==='loan_repayment'
+      );
+
+    // Priority 3: Parse loanId from note text e.g. "Loan ID: 1776704200001"
+    if(payments.length===0)
+      payments=APP.dues.filter(d=>{
+        if(d.type!=='loan_repayment') return false;
+        const noteMatch=String(d.note||'').match(/Loan ID:\s*(\d+)/);
+        return noteMatch&&String(noteMatch[1])===String(l.id);
+      });
+
+    // Priority 4: memberId fallback ONLY if zero loanId references exist
+    if(payments.length===0){
+      const mem=getMember(l.memberId);
+      const memKey=mem?.memberid||l.memberId;
+      const memberRep=APP.dues.filter(d=>
+        (String(d.memberId)===String(memKey)||
+         String(d.memberId)===String(mem?.id))&&
+        d.type==='loan_repayment'
+      );
+      const anyHasRef=memberRep.some(d=>{
+        if(d.loanId&&String(d.loanId).trim()!=='') return true;
+        return /Loan ID:\s*\d+/.test(String(d.note||''));
+      });
+      if(!anyHasRef) payments=memberRep;
+    }
+
     if(payments.length===0)return;
     const actualRepaid=payments.reduce((s,r)=>s+Number(r.amount),0);
     if(Number(l.repaid)===actualRepaid)return;
@@ -2271,8 +2301,11 @@ function getFiltered(){
     const loanRepay=mDues.filter(d=>d.type==='loan_repayment').reduce((s,d)=>s+Number(d.amount),0);
     const loanFee=mDues.filter(d=>d.type==='loan-fee').reduce((s,d)=>s+Number(d.amount),0);
     const other=mDues.filter(d=>!['monthly','special','initial','loan_repayment','loan-fee'].includes(d.type)).reduce((s,d)=>s+Number(d.amount),0);
-    const loanOut=loans.reduce((s,l)=>s+(Number(l.amount)-Number(l.repaid)),0);
-    const total=initial+monthly+special+loanRepay+loanFee+other;
+    const loanOut=loans.reduce((s,l)=>{
+  const total=Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable;
+  return s+Math.max(0,total-Number(l.repaid));
+},0);
+    const total = initial + monthly + special;
 
     return{mDues,loans,monthly,special,initial,loanRepay,loanFee,other,loanOut,total};
   }
