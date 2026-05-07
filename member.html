@@ -637,8 +637,12 @@ window.filterMemberDirectory=function(query){
 };
 
 function renderOverview(el,m,myDues,myLoans){
-  const totalPaid   = myDues.filter(d=>d.status==='paid').reduce((s,d)=>s+Number(d.amount),0);
-  const outstanding = myLoans.filter(l=>l.status==='active').reduce((s,l)=>s+(Number(l.totalPayable||l.amount)-Number(l.repaid)),0);
+  const totalPaid = myDues.filter(d=>
+  d.status==='paid' && 
+  d.type!=='loan_repayment' && 
+  d.type!=='loan-fee'
+).reduce((s,d)=>s+Number(d.amount),0);
+const outstanding = myLoans.filter(l=>l.status==='active').reduce((s,l)=>s+(Number(l.totalPayable||l.amount)-Number(l.repaid)),0);
   const unread      = APP.notifications.filter(n=>!isRead(n));
   const BS_MONTHS=['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
   const currentMonthName=BS_MONTHS[parseInt(todayBS().split('-')[1])-1];
