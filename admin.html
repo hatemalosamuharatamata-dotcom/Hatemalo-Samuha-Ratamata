@@ -366,6 +366,7 @@ async function loadAllData(msg='Fetching latest data, please wait...'){
     APP.paymentRequests=preqs;
     const lrep=data.loanRepayments||data.LoanRepayments||data.loanrepayments||data.loan_repayments||[];
     APP.loanRepayments=lrep;
+    if(data.documents) APP.documents=data.documents;
     if(data.notifications){
       data.notifications.forEach(n=>{if(!n.type&&n.Type)n.type=n.Type;});
       APP.notifications=data.notifications;
@@ -440,7 +441,7 @@ function addNotification(title,body,type,icon,memberid='all'){
 function updateBadges(){
   const pending=APP.members.filter(m=>m.status==='pending').length;
   const verified=APP.members.filter(m=>m.status==='verified').length;
-  const loans=APP.loanRequests.filter(l=>l.status==='pending').length;
+  const loans=APP.loanRequests.filter(l=>l.status==='pending'||l.status==='awaiting_guarantors').length;
   const pendingBc=document.getElementById('pending-bc');if(pendingBc)pendingBc.textContent=verified>0?verified:'';
   const verifyBc=document.getElementById('verify-bc');if(verifyBc)verifyBc.textContent=pending>0?pending:'';
   const loanBc=document.getElementById('loan-bc');if(loanBc)loanBc.textContent=loans>0?loans:'';
@@ -485,9 +486,10 @@ function adminTab(tab,btn){
 function renderAdminDash(el){
   const verifiedMembers=APP.members.filter(m=>m.status==='verified');
   const totalDues=APP.dues.filter(d=>d.status==='paid').reduce((s,d)=>s+Number(d.amount),0);
-  const totalLoans=APP.loans.reduce((s,l)=>s+Number(l.amount),0);
-  const totalRepaid=APP.loans.reduce((s,l)=>s+Number(l.repaid),0);
-  const outstanding=totalLoans-totalRepaid;
+  const activeLoans=APP.loans.filter(l=>l.status==='active');
+  const totalLoans=activeLoans.reduce((s,l)=>s+Number(l.amount),0);
+  const totalRepaid=activeLoans.reduce((s,l)=>s+Number(l.repaid),0);
+  const outstanding=activeLoans.reduce((s,l)=>s+Math.max(0,(Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable)-Number(l.repaid)),0);
   const interest=APP.loans.reduce((s,l)=>s+(Number(l.interest)||calcLoan(l.amount,l.rate,l.months).interest),0);
   const totalExpenses=(APP.expenses||[]).reduce((s,e)=>s+Number(e.amount),0);
   const netFund=totalDues+Math.round(interest)-outstanding-totalExpenses;
@@ -495,11 +497,11 @@ function renderAdminDash(el){
     <div class="ph"><h2>Admin Dashboard</h2><p>Financial overview — Hatemalo Samuha</p></div>
     <div class="sg3" style="margin-bottom:12px">
       <div class="sc2"><div class="sc2-label">Total Fund Collected</div><div class="sc2-val" style="color:var(--primary)">${fmt(totalDues)}</div><div class="sc2-sub">${verifiedMembers.length} verified members</div></div>
-      <div class="sc2"><div class="sc2-label">Total Loans Issued</div><div class="sc2-val" style="color:var(--secondary)">${fmt(totalLoans)}</div><div class="sc2-sub">${APP.loans.filter(l=>l.status==='active').length} active loans</div></div>
+      <div class="sc2"><div class="sc2-label">Active Loans Total</div><div class="sc2-val" style="color:var(--secondary)">${fmt(totalLoans)}</div><div class="sc2-sub">${activeLoans.length} active loans</div></div>
       <div class="sc2"><div class="sc2-label">Est. Interest Earned</div><div class="sc2-val" style="color:var(--warning)">${fmt(Math.round(interest))}</div><div class="sc2-sub">From all loans</div></div>
     </div>
     <div class="sg3" style="margin-bottom:18px">
-      <div class="sc2"><div class="sc2-label">Total Repaid</div><div class="sc2-val" style="color:var(--success)">${fmt(totalRepaid)}</div><div class="sc2-sub">Loan outstanding: ${fmt(outstanding)}</div></div>
+      <div class="sc2"><div class="sc2-label">Active Loans Repaid</div><div class="sc2-val" style="color:var(--success)">${fmt(totalRepaid)}</div><div class="sc2-sub">Outstanding: ${fmt(outstanding)}</div></div>
       <div class="sc2" style="border:2px solid var(--secondary)"><div class="sc2-label" style="color:var(--secondary)">Total Expenses</div><div class="sc2-val" style="color:var(--secondary)">${fmt(totalExpenses)}</div><div class="sc2-sub">${(APP.expenses||[]).length} expense records</div></div>
       <div class="sc2" style="border:2px solid var(--success);background:#f0fdf4"><div class="sc2-label" style="color:var(--success);font-weight:700">NET FUND REMAINING</div><div class="sc2-val" style="color:${netFund>=0?'var(--success)':'var(--secondary)'};font-size:22px">${fmt(netFund)}</div><div class="sc2-sub">Collected + Interest − Loans Out − Expenses</div></div>
     </div>
@@ -566,12 +568,15 @@ function renderAdminDash(el){
     const fp=document.getElementById('c-pie');
     if(fp)CHARTS['c-pie']=new Chart(fp,{type:'doughnut',data:{labels:['Initial Deposits','Monthly Dues','Special','Est. Interest','Expenses','Loans Out'],datasets:[{data:[initialTotal,monthlyTotal,specialTotal,Math.round(interest),totalExpenses,outstanding],backgroundColor:['#003366','#3b82f6','#fbbf24','#f59e0b','#ef4444','#6b7280'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}},cutout:'55%'}});
 
-    // ── Chart 3: Loan Overview horizontal bar ──
+    // ── Chart 3: Loan Overview horizontal bar (active loans only) ──
     const lc=document.getElementById('c-loans');
-    if(lc&&APP.loans.length){
-      const loanLabels=APP.loans.filter(l=>l.status==='active').map(l=>{const m=getMember(l.memberId);return(m?.fullname||l.memberId||'?').split(' ')[0];});
-      CHARTS['c-loans']=new Chart(lc,{type:'bar',data:{labels:loanLabels,datasets:[{label:'Outstanding',data:APP.loans.map(l=>Math.max(0,Number(l.amount)-Number(l.repaid))),backgroundColor:'#ef4444',borderRadius:4},{label:'Repaid',data:APP.loans.map(l=>Number(l.repaid)),backgroundColor:'#22c55e',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{callback:v=>'Rs '+v.toLocaleString()}},y:{stacked:true,grid:{display:false}}}}});
-    } else if(lc) lc.parentElement.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;font-size:13px">No loan data yet.</p>';
+    const activeLoansChart=APP.loans.filter(l=>l.status==='active');
+    if(lc&&activeLoansChart.length){
+      const loanLabels=activeLoansChart.map(l=>{const m=getMember(l.memberId);return(m?.fullname||l.memberId||'?').split(' ')[0];});
+      const outstandingData=activeLoansChart.map(l=>{const total=Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable;return Math.max(0,total-Number(l.repaid));});
+      const repaidData=activeLoansChart.map(l=>Number(l.repaid)||0);
+      CHARTS['c-loans']=new Chart(lc,{type:'bar',data:{labels:loanLabels,datasets:[{label:'Outstanding',data:outstandingData,backgroundColor:'#ef4444',borderRadius:4},{label:'Repaid',data:repaidData,backgroundColor:'#22c55e',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': Rs '+ctx.parsed.x.toLocaleString();}}}},scales:{x:{stacked:true,ticks:{callback:v=>'Rs '+v.toLocaleString()}},y:{stacked:true,grid:{display:false}}}}});
+    } else if(lc) lc.parentElement.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;font-size:13px">No active loans.</p>';
 
     // ── Chart 4: Member Dues Status this month ──
     const currentMonthName=BS_MONTHS[parseInt(todayBS().split('-')[1])-1];
@@ -1429,13 +1434,43 @@ async function recordSpecial(){
 
 }
 
-// ── SYNC LOAN REPAID ──────────────────────────────────────
 function syncLoanRepaid(){
   APP.loans.forEach(l=>{
     const lrSheet=APP.loanRepayments||[];
+
+    // Priority 1: LoanRepayments sheet by loanId
     let payments=lrSheet.filter(r=>String(r.loanId)===String(l.id));
-    if(payments.length===0)payments=APP.dues.filter(d=>String(d.loanId)===String(l.id)&&d.type==='loan_repayment');
-    if(payments.length===0){const mem=getMember(l.memberId);const memKey=mem?.memberid||l.memberId;payments=APP.dues.filter(d=>(String(d.memberId)===String(memKey)||String(d.memberId)===String(mem?.id))&&d.type==='loan_repayment');}
+
+    // Priority 2: Dues sheet by loanId column
+    if(payments.length===0)
+      payments=APP.dues.filter(d=>
+        String(d.loanId)===String(l.id)&&d.type==='loan_repayment'
+      );
+
+    // Priority 3: Parse loanId from note text e.g. "Loan ID: 1776704200001"
+    if(payments.length===0)
+      payments=APP.dues.filter(d=>{
+        if(d.type!=='loan_repayment') return false;
+        const noteMatch=String(d.note||'').match(/Loan ID:\s*(\d+)/);
+        return noteMatch&&String(noteMatch[1])===String(l.id);
+      });
+
+    // Priority 4: memberId fallback ONLY if zero loanId references exist
+    if(payments.length===0){
+      const mem=getMember(l.memberId);
+      const memKey=mem?.memberid||l.memberId;
+      const memberRep=APP.dues.filter(d=>
+        (String(d.memberId)===String(memKey)||
+         String(d.memberId)===String(mem?.id))&&
+        d.type==='loan_repayment'
+      );
+      const anyHasRef=memberRep.some(d=>{
+        if(d.loanId&&String(d.loanId).trim()!=='') return true;
+        return /Loan ID:\s*\d+/.test(String(d.note||''));
+      });
+      if(!anyHasRef) payments=memberRep;
+    }
+
     if(payments.length===0)return;
     const actualRepaid=payments.reduce((s,r)=>s+Number(r.amount),0);
     if(Number(l.repaid)===actualRepaid)return;
@@ -1451,6 +1486,7 @@ function syncLoanRepaid(){
 function renderAdminLoans(el){
   syncLoanRepaid();
   const pending=APP.loanRequests.filter(l=>l.status==='pending');
+  const awaitingG=APP.loanRequests.filter(l=>l.status==='awaiting_guarantors');
   const approved=APP.loanRequests.filter(l=>l.status==='approved');
   const rejected=APP.loanRequests.filter(l=>l.status==='rejected');
   window.__loanHistory=[...approved,...rejected].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
@@ -1473,9 +1509,37 @@ function renderAdminLoans(el){
   };
   el.innerHTML=`
     <div class="ph"><h2>Loan Requests & Management</h2></div>
-    ${pending.length>0?`<div class="alert alert-w">${pending.length} pending loan request(s)</div>`:''}
+    ${pending.length>0?`<div class="alert alert-w">${pending.length} pending loan request(s) ready for review</div>`:''}
+    ${awaitingG.length>0?`<div class="alert alert-i">⏳ ${awaitingG.length} loan application(s) awaiting guarantor confirmation</div>`:''}
+
+    <!-- AWAITING GUARANTORS -->
+    ${awaitingG.length>0?`
+    <div class="card" style="margin-bottom:16px;border-left:4px solid #d97706">
+      <div class="card-title" style="color:#d97706">⏳ Awaiting Guarantor Confirmation (${awaitingG.length})</div>
+      <div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="${thStyle}">Member</th><th style="${thStyle}">Amount</th><th style="${thStyle}">Date</th>
+          <th style="${thStyle}">Guarantor 1</th><th style="${thStyle}">Guarantor 2</th>
+        </tr></thead><tbody>
+        ${awaitingG.map(l=>{
+          const mem=getMember(l.memberId);
+          const g1s=l.g1Status||'pending';const g2s=l.g2Status||'pending';
+          const gBadge=s=>s==='accepted'?'<span class="badge bv">✅ Accepted</span>':s==='rejected'?'<span class="badge br">❌ Rejected</span>':s==='na'?'<span style="color:var(--muted);font-size:11px">—</span>':'<span class="badge bp">⏳ Pending</span>';
+          return`<tr>
+            <td style="${tdStyle}"><div style="font-weight:600;font-size:12px;color:var(--primary)">${mem?.fullname||l.memberName||'—'}</div><div style="font-size:10px;color:var(--muted)">${l.memberId}</div></td>
+            <td style="${tdStyle};font-weight:700">${fmt(l.amount)}</td>
+            <td style="${tdStyle}">${fmtDate(l.date)}</td>
+            <td style="${tdStyle}"><div style="font-size:12px">${l.guarantor1Name||'—'}</div>${gBadge(g1s)}${l.g1RespondedOn?`<div style="font-size:10px;color:var(--muted)">🕐 ${l.g1RespondedOn}</div>`:''}</td>
+            <td style="${tdStyle}"><div style="font-size:12px">${l.guarantor2Name||'—'}</div>${gBadge(g2s)}${l.g2RespondedOn?`<div style="font-size:10px;color:var(--muted)">🕐 ${l.g2RespondedOn}</div>`:''}</td>
+          </tr>`;
+        }).join('')}
+        </tbody></table></div>
+    </div>`:''}
+
     <div class="card" style="margin-bottom:16px">
-      <div class="card-title">Pending Loan Requests (${pending.length})</div>
+      <div class="card-title">Pending Loan Requests (${pending.length})
+        <span style="font-size:11px;font-weight:400;color:var(--success)">✅ Both guarantors confirmed</span>
+      </div>
       ${pending.length===0?'<p style="font-size:13px;color:var(--muted)">No pending requests.</p>':`
       <div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr>
@@ -2271,8 +2335,11 @@ function getFiltered(){
     const loanRepay=mDues.filter(d=>d.type==='loan_repayment').reduce((s,d)=>s+Number(d.amount),0);
     const loanFee=mDues.filter(d=>d.type==='loan-fee').reduce((s,d)=>s+Number(d.amount),0);
     const other=mDues.filter(d=>!['monthly','special','initial','loan_repayment','loan-fee'].includes(d.type)).reduce((s,d)=>s+Number(d.amount),0);
-    const loanOut=loans.reduce((s,l)=>s+(Number(l.amount)-Number(l.repaid)),0);
-    const total=initial+monthly+special+loanRepay+loanFee+other;
+    const loanOut=loans.reduce((s,l)=>{
+  const total=Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable;
+  return s+Math.max(0,total-Number(l.repaid));
+},0);
+    const total = initial + monthly + special;
 
     return{mDues,loans,monthly,special,initial,loanRepay,loanFee,other,loanOut,total};
   }
@@ -2976,9 +3043,9 @@ function viewLoanApplication(id){
       </div>
       <div style="margin-bottom:14px">
         <div style="font-size:12px;font-weight:700;margin-bottom:8px">४. ऋण जमानी बस्नेको विवरण:</div>
-        <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--primary);color:white"><th style="padding:6px 8px;border:1px solid #ccc">क्र.सं.</th><th style="padding:6px 8px;border:1px solid #ccc">नाम, थर</th><th style="padding:6px 8px;border:1px solid #ccc">सदस्यता नं.</th><th style="padding:6px 8px;border:1px solid #ccc">सम्पर्क नं.</th></tr></thead><tbody>
-          <tr><td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:center">१</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:600">${l.guarantor1Name||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor1Id||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor1Phone||'—'}</td></tr>
-          <tr><td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:center">२</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:600">${l.guarantor2Name||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor2Id||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor2Phone||'—'}</td></tr>
+        <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--primary);color:white"><th style="padding:6px 8px;border:1px solid #ccc">क्र.सं.</th><th style="padding:6px 8px;border:1px solid #ccc">नाम, थर</th><th style="padding:6px 8px;border:1px solid #ccc">सदस्यता नं.</th><th style="padding:6px 8px;border:1px solid #ccc">सम्पर्क नं.</th><th style="padding:6px 8px;border:1px solid #ccc">स्थिति</th><th style="padding:6px 8px;border:1px solid #ccc">मिति/समय</th></tr></thead><tbody>
+          <tr><td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:center">१</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:600">${l.guarantor1Name||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor1Id||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor1Phone||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.g1Status==='accepted'?'<span style="color:#166534;font-weight:700">✅ Accepted</span>':l.g1Status==='rejected'?'<span style="color:#991b1b;font-weight:700">❌ Rejected</span>':l.g1Status==='na'?'—':'<span style="color:#d97706;font-weight:700">⏳ Pending</span>'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:10px;color:var(--muted)">${l.g1RespondedOn||'—'}</td></tr>
+          <tr><td style="padding:6px 8px;border:1px solid #e5e7eb;text-align:center">२</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:600">${l.guarantor2Name||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor2Id||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.guarantor2Phone||'—'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb">${l.g2Status==='accepted'?'<span style="color:#166534;font-weight:700">✅ Accepted</span>':l.g2Status==='rejected'?'<span style="color:#991b1b;font-weight:700">❌ Rejected</span>':l.g2Status==='na'?'—':'<span style="color:#d97706;font-weight:700">⏳ Pending</span>'}</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-size:10px;color:var(--muted)">${l.g2RespondedOn||'—'}</td></tr>
         </tbody></table>
       </div>
       <div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">५. धितो विवरण:</div><div style="font-size:12px;color:var(--muted)">${l.collateral1||'(उल्लेख गरिएको छैन)'}</div></div>
@@ -3597,19 +3664,23 @@ async function renderDuesReminder(el){
   const unpaid=getUnpaid(selectedMonth,selectedYear);
 
   el.innerHTML=`
-    <div class="ph"><h2>📬 Dues Reminder</h2><p>Track unpaid members and send reminders via Email or WhatsApp</p></div>
+    <div class="ph"><h2>📬 Dues Reminder</h2><p>Track unpaid members and send reminders via Email</p></div>
 
     <div class="card" style="margin-bottom:16px;padding:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div style="font-size:13px;font-weight:700;color:var(--primary)">Select Period:</div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">Period:</div>
         <select id="dr-month" onchange="refreshDuesReminder()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
           ${BS_MONTHS.map((m,i)=>`<option value="${m}" ${i===currentMonthIdx?'selected':''}>${m}</option>`).join('')}
         </select>
         <select id="dr-year" onchange="refreshDuesReminder()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
           ${Array.from({length:5},(_,i)=>currentBSYear-i).map(y=>`<option value="${y}" ${y===currentBSYear?'selected':''}>${y}</option>`).join('')}
         </select>
-        <button class="btn btn-p" style="font-size:12px;padding:7px 16px" onclick="sendAllEmailReminders()">📧 Send All Emails</button>
-        <button class="btn btn-o" style="font-size:12px;padding:7px 16px" onclick="copyAllWAMessages()">📋 Copy All WhatsApp</button>
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">Member:</div>
+        <select id="dr-member" onchange="refreshDuesReminder()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:200px">
+          <option value="all">— All Unpaid Members —</option>
+          ${memberSort(APP.members.filter(m=>m.status==='verified')).map(m=>`<option value="${m.id}">${m.fullname} (${m.memberid||'—'})</option>`).join('')}
+        </select>
+        <button class="btn btn-p" style="font-size:12px;padding:7px 16px" onclick="sendAllEmailReminders()" id="dr-send-btn">📧 Send All Emails</button>
       </div>
     </div>
 
@@ -3634,23 +3705,33 @@ async function renderDuesReminder(el){
         </div>
         <div id="dr-paid-list"></div>
       </div>
-    </div>
-
-    <div class="card" id="dr-wa-card" style="display:none;margin-top:4px">
-      <div class="card-title">📱 WhatsApp Messages — Copy & Send</div>
-      <div class="alert alert-i" style="margin-bottom:12px;font-size:12px">Copy each message and paste into WhatsApp for that member.</div>
-      <div id="dr-wa-messages"></div>
     </div>`;
 
   window.__drRefresh=function(){
     const month=document.getElementById('dr-month')?.value||selectedMonth;
     const year=document.getElementById('dr-year')?.value||selectedYear;
-    const unpaidList=getUnpaid(month,year);
-    const paidList=memberSort(APP.members.filter(m=>m.status==='verified')).filter(m=>!unpaidList.find(u=>String(u.id)===String(m.id)));
+    const memberFilter=document.getElementById('dr-member')?.value||'all';
+    const allUnpaid=getUnpaid(month,year);
+    // apply member filter to unpaid list display
+    const unpaidList=memberFilter==='all'?allUnpaid:allUnpaid.filter(m=>String(m.id)===memberFilter);
+    const paidList=memberSort(APP.members.filter(m=>m.status==='verified')).filter(m=>!allUnpaid.find(u=>String(u.id)===String(m.id)));
     const total=APP.members.filter(m=>m.status==='verified').length;
 
+    // update send button label based on filter
+    const sendBtn=document.getElementById('dr-send-btn');
+    if(sendBtn){
+      if(memberFilter==='all'){
+        sendBtn.textContent='📧 Send All Emails';
+        sendBtn.title='Send reminder to all unpaid members with email';
+      } else {
+        const sel=APP.members.find(m=>String(m.id)===memberFilter);
+        sendBtn.textContent=`📧 Send to ${sel?.fullname?.split(' ')[0]||'Member'}`;
+        sendBtn.title='Send reminder to this member only';
+      }
+    }
+
     document.getElementById('dr-paid-count').textContent=paidList.length;
-    document.getElementById('dr-unpaid-count').textContent=unpaidList.length;
+    document.getElementById('dr-unpaid-count').textContent=allUnpaid.length;
     document.getElementById('dr-unpaid-badge').textContent=unpaidList.length;
     document.getElementById('dr-paid-badge').textContent=paidList.length;
 
@@ -3669,9 +3750,8 @@ async function renderDuesReminder(el){
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             ${m.email
-              ?`<button class="btn-sm btn-sm-b" style="white-space:nowrap" onclick="sendSingleEmailReminder('${m.id}','${month}','${year}')">📧 Email</button>`
+              ?`<button class="btn-sm btn-sm-b" style="white-space:nowrap" onclick="quickSendEmail('${m.id}','${month}','${year}')">📧 Email</button>`
               :`<button class="btn-sm" style="white-space:nowrap;color:var(--muted);cursor:not-allowed" disabled title="No email saved">📧 No email</button>`}
-            <button class="btn-sm btn-sm-g" style="white-space:nowrap" onclick="showWAForMember('${m.id}','${month}','${year}')">📱 WhatsApp</button>
           </div>
         </div>`).join('');
 
@@ -3697,6 +3777,55 @@ async function renderDuesReminder(el){
 }
 
 window.refreshDuesReminder=function(){if(window.__drRefresh)window.__drRefresh();};
+
+// ── QUICK INLINE EMAIL REMINDER (dues + active loans) ────
+async function quickSendEmail(memberId,month,year){
+  const m=getMember(memberId);
+  if(!m?.email){alert('No email address saved for this member.');return;}
+  const mId=String(m.memberid||m.id);
+
+  // build active loan details to include in reminder
+  const activeLoans=APP.loans.filter(l=>(String(l.memberId)===mId||String(l.memberId)===String(m.id))&&l.status==='active');
+  const loanRows=activeLoans.map(l=>{
+    const calc=calcLoan(l.amount,l.rate,l.months);
+    const monthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
+    const totalPayable=Number(l.totalPayable)||calc.totalPayable;
+    const repaid=Number(l.repaid)||0;
+    const remaining=Math.max(0,totalPayable-repaid);
+    const installmentsDone=APP.dues.filter(d=>(String(d.memberId)===mId||String(d.memberId)===String(m.id))&&d.type==='loan_repayment'&&String(d.loanId)===String(l.id)).length;
+    return{
+      installmentNo:installmentsDone+1,
+      monthly,remaining,
+      rate:l.rate,months:l.months,
+      issued:fmtDate(l.issued),
+      totalPayable,repaid
+    };
+  });
+  const totalDue=MONTHLY_DUES+loanRows.reduce((s,r)=>s+r.monthly,0);
+  const loanSummary=loanRows.length>0
+    ? loanRows.map((r,i)=>`Loan ${i+1}: Installment #${r.installmentNo} — Rs ${r.monthly.toLocaleString()}/mo | Remaining: Rs ${r.remaining.toLocaleString()}`).join('\n')
+    : '';
+  const confirmMsg=`Send reminder to ${m.fullname} (${m.email})?\n\nMonthly dues: Rs ${MONTHLY_DUES.toLocaleString()}${loanRows.length>0?'\n'+loanSummary:''}\n\nTotal due: Rs ${totalDue.toLocaleString()}`;
+  if(!confirm(confirmMsg))return;
+
+  showLoader('Sending reminder email...');
+  try{
+    await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+      action:'sendDuesReminder',
+      to:m.email,
+      name:m.fullname,
+      memberId:m.memberid||m.id,
+      month,year,
+      includeDues:true,
+      duesAmount:MONTHLY_DUES,
+      loans:loanRows,
+      totalDue,
+      website:'https://hatemalosamuha.vercel.app'
+    })});
+    hideLoader();
+    alert(`✅ Reminder sent to ${m.fullname}!\n\nIncluded: Monthly dues${loanRows.length>0?' + '+loanRows.length+' loan installment(s)':''}`);
+  }catch(e){hideLoader();alert('Failed to send email. Check your connection.');}
+}
 
 async function sendSingleEmailReminder(memberId,month,year){
   const m=getMember(memberId);if(!m||!m.email){alert('No email address saved for this member.');return;}
@@ -3754,21 +3883,47 @@ async function sendSingleEmailReminder(memberId,month,year){
 async function sendAllEmailReminders(){
   const month=document.getElementById('dr-month')?.value;
   const year=document.getElementById('dr-year')?.value;
-  const BS_MONTHS=['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
+  const memberFilter=document.getElementById('dr-member')?.value||'all';
   const paid=new Set(APP.dues.filter(d=>d.status==='paid'&&d.type==='monthly'&&String(d.month||'').startsWith(month)&&String(d.year||d.date?.split('-')[0])===String(year)).map(d=>String(d.memberId)));
-  const unpaid=memberSort(APP.members.filter(m=>m.status==='verified'&&!paid.has(String(m.memberid||m.id))));
+  let unpaid=memberSort(APP.members.filter(m=>m.status==='verified'&&!paid.has(String(m.memberid||m.id))));
+  // apply member filter
+  if(memberFilter!=='all') unpaid=unpaid.filter(m=>String(m.id)===memberFilter);
   const withEmail=unpaid.filter(m=>m.email);
-  if(withEmail.length===0){alert('No unpaid members with email addresses found.');return;}
-  if(!confirm(`Send dues reminder emails to ${withEmail.length} member(s)?\n\n${withEmail.map(m=>m.fullname).join(', ')}`))return;
-  showLoader(`Sending ${withEmail.length} emails...`);
+  if(unpaid.length===0){
+    const sel=APP.members.find(m=>String(m.id)===memberFilter);
+    alert(memberFilter==='all'?'All members have already paid for this month!':`${sel?.fullname||'This member'} has already paid for ${month} ${year}.`);
+    return;
+  }
+  if(withEmail.length===0){
+    alert(memberFilter==='all'?'No unpaid members with email addresses found.':'This member has no email address saved.');
+    return;
+  }
+  if(!confirm(`Send dues reminder email(s) to ${withEmail.length} member(s)?\n\n${withEmail.map(m=>m.fullname).join(', ')}`))return;
+  showLoader(`Sending ${withEmail.length} email(s)...`);
   let sent=0;
   for(const m of withEmail){
     try{
+      const mId=String(m.memberid||m.id);
+      const activeLoans=APP.loans.filter(l=>(String(l.memberId)===mId||String(l.memberId)===String(m.id))&&l.status==='active');
+      const loanRows=activeLoans.map(l=>{
+        const calc=calcLoan(l.amount,l.rate,l.months);
+        const monthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
+        const totalPayable=Number(l.totalPayable)||calc.totalPayable;
+        const repaid=Number(l.repaid)||0;
+        const remaining=Math.max(0,totalPayable-repaid);
+        const installmentsDone=APP.dues.filter(d=>(String(d.memberId)===mId||String(d.memberId)===String(m.id))&&d.type==='loan_repayment'&&String(d.loanId)===String(l.id)).length;
+        return{installmentNo:installmentsDone+1,monthly,remaining,rate:l.rate,months:l.months,issued:fmtDate(l.issued),totalPayable,repaid};
+      });
+      const totalDue=MONTHLY_DUES+loanRows.reduce((s,r)=>s+r.monthly,0);
       await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
         action:'sendDuesReminder',
         to:m.email,name:m.fullname,
         memberId:m.memberid||m.id,
-        month,year,amount:MONTHLY_DUES,
+        month,year,
+        includeDues:true,
+        duesAmount:MONTHLY_DUES,
+        loans:loanRows,
+        totalDue,
         website:'https://hatemalosamuha.vercel.app'
       })});
       sent++;
@@ -3776,7 +3931,7 @@ async function sendAllEmailReminders(){
   }
   hideLoader();
   addNotification('Dues Reminders Sent',`${sent} reminder email(s) sent for ${month} ${year}.`,'notice','📧');
-  alert(`✅ ${sent} reminder email(s) sent!\n${unpaid.length-withEmail.length} member(s) skipped — no email saved.`);
+  alert(`✅ ${sent} email(s) sent!\n${unpaid.length-withEmail.length>0?unpaid.length-withEmail.length+' member(s) skipped — no email saved.':''}`);
 }
 
 function showWAForMember(memberId,month,year){

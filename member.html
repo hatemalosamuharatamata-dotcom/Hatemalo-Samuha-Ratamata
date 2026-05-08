@@ -120,10 +120,22 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
 
 @media(max-width:768px){
   .member-layout{grid-template-columns:1fr}
-  .member-sidebar{display:none}
+  .member-sidebar{display:none!important}
   .sg3{grid-template-columns:1fr 1fr}
   .info-grid{grid-template-columns:1fr}
 }
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:6px;border:none;background:transparent}
+.hamburger span{display:block;width:22px;height:2px;background:white;border-radius:2px}
+@media(max-width:768px){
+  .hamburger{display:flex}
+  .nav-title p{display:none}
+}
+.mob-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300}
+.mob-sidebar-overlay.open{display:block}
+.mob-sidebar{position:fixed;top:0;left:-260px;width:260px;height:100vh;background:var(--primary);z-index:400;overflow-y:auto;transition:left 0.3s ease;box-shadow:4px 0 20px rgba(0,0,0,0.3)}
+.mob-sidebar.open{left:0}
+.mob-sidebar-close{display:flex;justify-content:flex-end;padding:12px 14px 4px}
+.mob-sidebar-close button{background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:4px 8px;line-height:1}
 </style>
 </head>
 <body>
@@ -139,6 +151,9 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
 
 <nav class="navbar">
   <div class="nav-brand">
+    <button class="hamburger" onclick="toggleMobSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
     <div class="nav-logo">H</div>
     <div class="nav-title"><h1>Hatemalo Samuha</h1><p>हातेमालो समुह — Member Dashboard</p></div>
   </div>
@@ -152,6 +167,32 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
     <button class="btn-logout" onclick="doLogout()">Logout</button>
   </div>
 </nav>
+
+<!-- Mobile sidebar overlay -->
+<div class="mob-sidebar-overlay" id="mob-overlay" onclick="closeMobSidebar()"></div>
+<div class="mob-sidebar" id="mob-sidebar">
+  <div class="mob-sidebar-close"><button onclick="closeMobSidebar()">✕</button></div>
+  <div class="mem-sb-top">
+    <div class="mem-av-lg" id="mob-mem-av">?</div>
+    <div style="font-size:14px;font-weight:700;color:white" id="mob-mem-name">Member</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px" id="mob-mem-role">—</div>
+    <span class="badge bv" style="margin-top:8px;display:inline-block">Verified</span>
+  </div>
+  <div style="padding:10px 0">
+    <div class="sb-label">My Account</div>
+    <button class="msb-btn" onclick="memberTab('overview',this);closeMobSidebar()"><span class="ic">🏠</span>Overview</button>
+    <button class="msb-btn" onclick="memberTab('my-funds',this);closeMobSidebar()"><span class="ic">💰</span>My Funds</button>
+    <button class="msb-btn" onclick="memberTab('my-loans',this);closeMobSidebar()"><span class="ic">📋</span>My Loans</button>
+    <button class="msb-btn" onclick="memberTab('apply-loan',this);closeMobSidebar()"><span class="ic">📝</span>Apply for Loan</button>
+    <button class="msb-btn" onclick="memberTab('guarantor-requests',this);closeMobSidebar()"><span class="ic">🤝</span>जमानी अनुरोध<span class="bc" id="mob-guarantor-bc"></span></button>
+    <button class="msb-btn" onclick="memberTab('pay-dues',this);closeMobSidebar()"><span class="ic">💳</span>Pay Dues<span class="bc" id="mob-pay-bc"></span></button>
+    <button class="msb-btn" onclick="memberTab('profile',this);closeMobSidebar()"><span class="ic">👤</span>My Profile</button>
+    <div class="sb-label">Group</div>
+    <button class="msb-btn" onclick="memberTab('group-finance',this);closeMobSidebar()"><span class="ic">📊</span>Group Finance</button>
+    <button class="msb-btn" onclick="memberTab('meetings',this);closeMobSidebar()"><span class="ic">📅</span>Meetings</button>
+    <button class="msb-btn" onclick="memberTab('notifications',this);closeMobSidebar()"><span class="ic">🔔</span>Notifications<span class="bc" id="mob-notif-bc">0</span></button>
+  </div>
+</div>
 
 <div class="member-layout">
   <div class="member-sidebar">
@@ -167,6 +208,7 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
       <button class="msb-btn" onclick="memberTab('my-funds',this)"><span class="ic">💰</span>My Funds</button>
       <button class="msb-btn" onclick="memberTab('my-loans',this)"><span class="ic">📋</span>My Loans</button>
       <button class="msb-btn" onclick="memberTab('apply-loan',this)"><span class="ic">📝</span>Apply for Loan</button>
+      <button class="msb-btn" onclick="memberTab('guarantor-requests',this)"><span class="ic">🤝</span>जमानी अनुरोध<span class="bc" id="guarantor-bc"></span></button>
       <button class="msb-btn" onclick="memberTab('pay-dues',this)"><span class="ic">💳</span>Pay Dues<span class="bc" id="pay-status-bc"></span></button>
       <button class="msb-btn" onclick="memberTab('profile',this)"><span class="ic">👤</span>My Profile</button>
       <div class="sb-label">Group</div>
@@ -222,6 +264,34 @@ const _savedRole = localStorage.getItem('hs_role');
 const _savedUser = localStorage.getItem('hs_user');
 if(_savedRole !== 'member' || !_savedUser){
   window.location.href = 'index.html';
+}
+
+// ── MOBILE SIDEBAR ───────────────────────────────────────
+function toggleMobSidebar(){
+  document.getElementById('mob-sidebar').classList.toggle('open');
+  document.getElementById('mob-overlay').classList.toggle('open');
+  document.body.style.overflow=document.getElementById('mob-sidebar').classList.contains('open')?'hidden':'';
+}
+function closeMobSidebar(){
+  document.getElementById('mob-sidebar').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function syncMobSidebar(){
+  const m=APP.currentUser;if(!m)return;
+  const mobAv=document.getElementById('mob-mem-av');
+  const desktopAv=document.getElementById('mem-av');
+  if(mobAv&&desktopAv)mobAv.innerHTML=desktopAv.innerHTML;
+  const mobName=document.getElementById('mob-mem-name');
+  if(mobName)mobName.textContent=m.fullname||'Member';
+  const mobRole=document.getElementById('mob-mem-role');
+  if(mobRole)mobRole.textContent=m.role||'—';
+  const desktopBc=document.getElementById('pay-status-bc');
+  const mobBc=document.getElementById('mob-pay-bc');
+  if(desktopBc&&mobBc)mobBc.textContent=desktopBc.textContent;
+  const desktopNotifBc=document.getElementById('mem-notif-bc');
+  const mobNotifBc=document.getElementById('mob-notif-bc');
+  if(desktopNotifBc&&mobNotifBc)mobNotifBc.textContent=desktopNotifBc.textContent;
 }
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -417,20 +487,25 @@ const myLoans=APP.loans.filter(l=>
   else if(tab==='my-funds') renderFunds(el,m,myDues);
   else if(tab==='my-loans') renderLoans(el,m,myLoans);
   else if(tab==='apply-loan') renderApplyLoan(el,m);
+  else if(tab==='guarantor-requests') renderGuarantorRequests(el,m);
   else if(tab==='notifications') renderNotifications(el);
   else if(tab==='profile') renderProfile(el,m);
   else if(tab==='pay-dues') renderPayDues(el,m);
   else if(tab==='group-finance') renderGroupFinance(el);
-else if(tab==='meetings') renderMemberMeetings(el, APP.currentUser.memberid || APP.currentUser.id);
+  else if(tab==='meetings') renderMemberMeetings(el, APP.currentUser.memberid || APP.currentUser.id);
 }
 
 function renderGroupFinance(el) {
   // ── Group-wide totals ────────────────────────────────
   const verifiedMembers = APP.members.filter(m => m.status === 'verified');
   const totalDues       = APP.dues.filter(d => d.status === 'paid').reduce((s,d) => s + Number(d.amount), 0);
-  const totalLoans      = APP.loans.reduce((s,l) => s + Number(l.amount), 0);
-  const totalRepaid     = APP.loans.reduce((s,l) => s + Number(l.repaid), 0);
-  const outstanding     = totalLoans - totalRepaid;
+  const activeLoans     = APP.loans.filter(l => l.status === 'active');
+  const totalLoans      = activeLoans.reduce((s,l) => s + Number(l.amount), 0);
+  const totalRepaid     = activeLoans.reduce((s,l) => s + Number(l.repaid), 0);
+  const outstanding     = activeLoans.reduce((s,l) => {
+    const total = Number(l.totalPayable) || calcLoan(l.amount, l.rate, l.months).totalPayable;
+    return s + Math.max(0, total - Number(l.repaid));
+  }, 0);
   const interest        = APP.loans.reduce((s,l) => {
     return s + (Number(l.interest) || calcLoan(l.amount, l.rate, l.months).interest);
   }, 0);
@@ -479,9 +554,9 @@ function renderGroupFinance(el) {
         <div class="sc2-sub">${verifiedMembers.length} verified members</div>
       </div>
       <div class="sc2">
-        <div class="sc2-label">Total Loans Issued</div>
+        <div class="sc2-label">Active Loans Total</div>
         <div class="sc2-val" style="color:var(--secondary)">${fmt(totalLoans)}</div>
-        <div class="sc2-sub">${APP.loans.filter(l => l.status === 'active').length} active loans</div>
+        <div class="sc2-sub">${activeLoans.length} active loans</div>
       </div>
       <div class="sc2">
         <div class="sc2-label">Est. Interest Earned</div>
@@ -492,9 +567,9 @@ function renderGroupFinance(el) {
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px">
       <div class="sc2">
-        <div class="sc2-label">Total Repaid</div>
+        <div class="sc2-label">Active Loans Repaid</div>
         <div class="sc2-val" style="color:var(--success)">${fmt(totalRepaid)}</div>
-        <div class="sc2-sub">Loan outstanding: ${fmt(outstanding)}</div>
+        <div class="sc2-sub">Outstanding: ${fmt(outstanding)}</div>
       </div>
       <div class="sc2" style="border-color:#fca5a5">
         <div class="sc2-label" style="color:var(--secondary)">Total Expenses</div>
@@ -637,8 +712,12 @@ window.filterMemberDirectory=function(query){
 };
 
 function renderOverview(el,m,myDues,myLoans){
-  const totalPaid   = myDues.filter(d=>d.status==='paid').reduce((s,d)=>s+Number(d.amount),0);
-  const outstanding = myLoans.filter(l=>l.status==='active').reduce((s,l)=>s+(Number(l.totalPayable||l.amount)-Number(l.repaid)),0);
+  const totalPaid = myDues.filter(d=>
+  d.status==='paid' && 
+  d.type!=='loan_repayment' && 
+  d.type!=='loan-fee'
+).reduce((s,d)=>s+Number(d.amount),0);
+const outstanding = myLoans.filter(l=>l.status==='active').reduce((s,l)=>s+(Number(l.totalPayable||l.amount)-Number(l.repaid)),0);
   const unread      = APP.notifications.filter(n=>!isRead(n));
   const BS_MONTHS=['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
   const currentMonthName=BS_MONTHS[parseInt(todayBS().split('-')[1])-1];
@@ -726,7 +805,7 @@ function renderOverview(el,m,myDues,myLoans){
         return `
         <div style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="font-weight:700">${l.purpose||l.loanType||'Loan'}</span>
+            <span style="font-weight:700">${l.purpose||l.loanType||'ऋण'}</span>
             <span style="color:var(--secondary);font-weight:700">Remaining: ${fmt(remaining)}</span>
           </div>
           <div style="background:var(--border);border-radius:20px;height:8px;overflow:hidden">
@@ -1438,9 +1517,15 @@ async function submitLoanApplication(){
   const expTotal = ['exp-1','exp-2','exp-3','exp-4','exp-5','exp-6'].reduce((s,i)=>s+(Number(document.getElementById(i)?.value)||0),0);
   const incTotal = ['inc-1','inc-2','inc-3','inc-4','inc-5','inc-6','inc-7','inc-8'].reduce((s,i)=>s+(Number(document.getElementById(i)?.value)||0),0);
 
-  // Capture signature BEFORE building req
   const canvas = document.getElementById('sig-canvas');
   const signatureData = canvas ? canvas.toDataURL('image/png') : '';
+
+  const g1Id = document.getElementById('g1-memberid')?.value||'';
+  const g2Id = document.getElementById('g2-memberid')?.value||'';
+  const g1Sel = document.getElementById('g1-select');
+  const g2Sel = document.getElementById('g2-select');
+  const g1Name = (g1Sel?.value && g1Sel.value!=='') ? (g1Sel.options[g1Sel.selectedIndex]?.text||'') : '';
+  const g2Name = (g2Sel?.value && g2Sel.value!=='') ? (g2Sel.options[g2Sel.selectedIndex]?.text||'') : '';
 
   showLoader('Submitting application...');
   const req = {
@@ -1451,33 +1536,350 @@ async function submitLoanApplication(){
     amount:          Number(amount),
     months:          document.getElementById('lf-months')?.value||'',
     date:            todayBS(),
-    status:          'pending',
+    status:          'awaiting_guarantors',
     totalExpense:    expTotal,
     totalIncome:     incTotal,
-    guarantor1Name:  document.getElementById('g1-select')?.options[document.getElementById('g1-select')?.selectedIndex]?.text||'',
-    guarantor1Id:    document.getElementById('g1-memberid')?.value||'',
+    guarantor1Name:  g1Name,
+    guarantor1Id:    g1Id,
     guarantor1Phone: document.getElementById('g1-phone')?.value||'',
-    guarantor2Name:  document.getElementById('g2-select')?.options[document.getElementById('g2-select')?.selectedIndex]?.text||'',
-    guarantor2Id:    document.getElementById('g2-memberid')?.value||'',
+    guarantor2Name:  g2Name,
+    guarantor2Id:    g2Id,
     guarantor2Phone: document.getElementById('g2-phone')?.value||'',
     collateral1:     document.getElementById('col1-name')?.value||'',
-    signature:       signatureData,  // ← THIS was missing
+    signature:       signatureData,
+    g1Status:        g1Id?'pending':'na',
+    g1RespondedOn:   '',
+    g1Note:          '',
+    g2Status:        g2Id?'pending':'na',
+    g2RespondedOn:   '',
+    g2Note:          '',
   };
 
-  console.log('Submitting req:', JSON.stringify(req).length, 'bytes', req);
   const result = await saveToSheet('LoanRequests', req);
-  console.log('Result:', result);
   hideLoader();
 
   if(result&&!result.error){
     if(!APP.loanRequests) APP.loanRequests=[];
     APP.loanRequests.push(req);
+
+    // Send notification to guarantor 1
+    if(g1Id){
+      await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+        action:'insert',sheet:'Notifications',
+        data:{
+          id:Date.now()+1,
+          memberid:g1Id,
+          title:'🤝 Guarantor Request',
+          body:`${APP.currentUser.fullname} (${APP.currentUser.memberid||APP.currentUser.id}) has selected you as a guarantor for a ${fmt(Number(amount))} loan. Please respond in your dashboard.`,
+          time:todayBS(),read:'false',type:'loan',icon:'🤝',
+          loanRequestId:String(req.id),
+          guarantorSlot:'1'
+        }
+      })});
+    }
+    // Send notification to guarantor 2
+    if(g2Id){
+      await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+        action:'insert',sheet:'Notifications',
+        data:{
+          id:Date.now()+2,
+          memberid:g2Id,
+          title:'🤝 Guarantor Request',
+          body:`${APP.currentUser.fullname} (${APP.currentUser.memberid||APP.currentUser.id}) has selected you as a guarantor for a ${fmt(Number(amount))} loan. Please respond in your dashboard.`,
+          time:todayBS(),read:'false',type:'loan',icon:'🤝',
+          loanRequestId:String(req.id),
+          guarantorSlot:'2'
+        }
+      })});
+    }
+
+    updateGuarantorBadge();
+    okEl.textContent='✅ Application submitted! Your selected guarantors have been notified. Loan will be sent to admin once both guarantors accept.';
     okEl.classList.remove('hidden');
-    setTimeout(()=>{memberTab('apply-loan',document.querySelector('.msb-btn[onclick*="apply-loan"]'));},1500);
+    setTimeout(()=>{memberTab('apply-loan',document.querySelector('.msb-btn[onclick*="apply-loan"]'));},2500);
   } else {
     errEl.textContent='Submission failed. Please check your connection and try again.';
     errEl.style.display='block';
   }
+}
+
+// ── GUARANTOR BADGE ──────────────────────────────────────
+function updateGuarantorBadge(){
+  const m=APP.currentUser;
+  const mId=String(m.memberid||m.id);
+  const pending=(APP.loanRequests||[]).filter(l=>{
+    if(l.status==='awaiting_guarantors'||l.status==='pending'){
+      if(String(l.guarantor1Id)===mId&&l.g1Status==='pending') return true;
+      if(String(l.guarantor2Id)===mId&&l.g2Status==='pending') return true;
+    }
+    return false;
+  }).length;
+  const bc=document.getElementById('guarantor-bc');
+  if(bc)bc.textContent=pending>0?pending:'';
+  const mobBc=document.getElementById('mob-guarantor-bc');
+  if(mobBc)mobBc.textContent=pending>0?pending:'';
+}
+
+// ── GUARANTOR REQUESTS TAB ───────────────────────────────
+function renderGuarantorRequests(el,m){
+  const mId=String(m.memberid||m.id);
+  // Requests where I am selected as guarantor
+  const myRequests=(APP.loanRequests||[]).filter(l=>
+    String(l.guarantor1Id)===mId||String(l.guarantor2Id)===mId
+  );
+  // My own submitted loans — to see guarantor responses
+  const myLoans=(APP.loanRequests||[]).filter(l=>
+    String(l.memberId)===mId||String(l.memberId)===String(m.id)
+  );
+
+  const pending=myRequests.filter(l=>{
+    const slot=String(l.guarantor1Id)===mId?'1':'2';
+    const status=slot==='1'?l.g1Status:l.g2Status;
+    return status==='pending'&&(l.status==='awaiting_guarantors');
+  });
+  const responded=myRequests.filter(l=>{
+    const slot=String(l.guarantor1Id)===mId?'1':'2';
+    const status=slot==='1'?l.g1Status:l.g2Status;
+    return status==='accepted'||status==='rejected';
+  });
+
+  el.innerHTML=`
+    <div class="ph"><h2>🤝 जमानी अनुरोध</h2><p>साथी सदस्यहरूबाट ऋण जमानीका अनुरोधहरू</p></div>
+
+    <!-- PENDING REQUESTS FOR ME TO RESPOND -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="color:var(--secondary)">
+        ⏳ बाँकी — तपाईंको जवाफ आवश्यक छ
+        ${pending.length>0?`<span class="badge br">${pending.length}</span>`:''}
+      </div>
+      ${pending.length===0
+        ?'<div class="alert alert-s">✅ तपाईंका लागि कुनै जमानी अनुरोध बाँकी छैन।</div>'
+        :pending.map(l=>{
+          const slot=String(l.guarantor1Id)===mId?'1':'2';
+          const applicant=APP.members.find(x=>String(x.memberid||x.id)===String(l.memberId||l.memberId));
+          return`<div style="background:#fffbf0;border:1px solid #fde68a;border-radius:12px;padding:16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+              <div class="av" style="width:44px;height:44px;font-size:14px;flex-shrink:0">${ini(l.memberName||'?')}</div>
+              <div style="flex:1">
+                <div style="font-size:15px;font-weight:700;color:var(--primary)">${l.memberName}</div>
+                <div style="font-size:12px;color:var(--muted)">${l.memberId} · आवेदन मिति: ${fmtDate(l.date)}</div>
+              </div>
+              <span class="badge bp">⏳ तपाईंको जवाफको प्रतीक्षा</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:#f0f4ff;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">ऋण रकम</div>
+                <div style="font-size:16px;font-weight:700;color:var(--primary)">${fmt(l.amount)}</div>
+              </div>
+              <div style="background:#f0f4ff;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">ऋणको किसिम</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text)">${l.loanType||'—'}</div>
+              </div>
+              <div style="background:#f0f4ff;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px">अवधि</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text)">${l.months||'—'} महिना</div>
+              </div>
+            </div>
+            <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px">
+              <div style="font-weight:700;color:var(--primary);margin-bottom:6px">अर्को जमानी:</div>
+              ${slot==='1'
+                ?(l.guarantor2Name?`${l.guarantor2Name} (${l.guarantor2Id||'—'}) — स्थिति: <strong>${l.g2Status==='accepted'?'✅ स्वीकृत':l.g2Status==='rejected'?'❌ अस्वीकृत':'⏳ बाँकी'}</strong>`:'छानिएको छैन')
+                :(l.guarantor1Name?`${l.guarantor1Name} (${l.guarantor1Id||'—'}) — स्थिति: <strong>${l.g1Status==='accepted'?'✅ स्वीकृत':l.g1Status==='rejected'?'❌ अस्वीकृत':'⏳ बाँकी'}</strong>`:'None selected')}
+            </div>
+            <div class="alert alert-w" style="font-size:12px;margin-bottom:14px">
+              ⚠️ जमानी बस्दा तपाईं कानुनी रूपमा जिम्मेवार हुनुहुन्छ। यदि ऋणी व्यक्तिले ऋण तिर्न सकेनन् भने तपाईंले तिर्नुपर्ने हुनसक्छ।
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button onclick="respondGuarantor('${l.id}','${slot}','accepted')"
+                style="padding:10px 24px;background:var(--success);color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">
+                ✅ जमानी बस्न स्वीकार गर्नुहोस्
+              </button>
+              <button onclick="promptRejectGuarantor('${l.id}','${slot}')"
+                style="padding:10px 24px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">
+                ❌ अस्वीकार गर्नुहोस्
+              </button>
+            </div>
+          </div>`;
+        }).join('')}
+    </div>
+
+    <!-- MY OWN LOANS — GUARANTOR STATUS -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📋 मेरा ऋण आवेदनहरू — जमानी स्थिति</div>
+      ${myLoans.length===0
+        ?'<p style="font-size:13px;color:var(--muted)">तपाईंले कुनै ऋण आवेदन पेश गर्नुभएको छैन।</p>'
+        :myLoans.map(l=>{
+          const g1s=l.g1Status||'na';
+          const g2s=l.g2Status||'na';
+          const statusColor={accepted:'var(--success)',rejected:'var(--secondary)',pending:'#d97706',na:'var(--muted)'};
+          const statusLabel={accepted:'✅ स्वीकृत',rejected:'❌ अस्वीकृत',pending:'⏳ बाँकी',na:'—'};
+          return`<div style="padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;
+            ${l.status==='awaiting_guarantors'?'border-left:4px solid #d97706;background:#fffbf0':
+              l.status==='pending'?'border-left:4px solid var(--primary);background:#f0f4ff':
+              l.status==='approved'?'border-left:4px solid var(--success);background:#f0fdf4':
+              l.status==='rejected'?'border-left:4px solid var(--secondary);background:#fff5f5':''}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--primary)">${l.loanType||'Loan'} — ${fmt(l.amount)}</div>
+                <div style="font-size:11px;color:var(--muted)">आवेदन: ${fmtDate(l.date)} · ${l.months||'?'} महिना</div>
+              </div>
+              <span class="badge ${l.status==='approved'?'bv':l.status==='rejected'?'br':l.status==='awaiting_guarantors'?'ba':'bb'}">
+                ${l.status==='awaiting_guarantors'?'⏳ जमानीको प्रतीक्षा':
+                  l.status==='pending'?'📋 प्रशासकको समीक्षाको प्रतीक्षा':
+                  l.status==='approved'?'✅ स्वीकृत':
+                  l.status==='rejected'?'❌ अस्वीकृत':l.status}
+              </span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px">जमानी १</div>
+                <div style="font-size:13px;font-weight:600">${l.guarantor1Name||'—'}</div>
+                <div style="font-size:11px;color:${statusColor[g1s]};font-weight:700;margin-top:3px">${statusLabel[g1s]}</div>
+                ${l.g1RespondedOn?`<div style="font-size:10px;color:var(--muted);margin-top:2px">🕐 ${l.g1RespondedOn}</div>`:''}
+                ${l.g1Note?`<div style="font-size:11px;color:var(--secondary);margin-top:3px;font-style:italic">"${l.g1Note}"</div>`:''}
+              </div>
+              <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px">जमानी २</div>
+                <div style="font-size:13px;font-weight:600">${l.guarantor2Name||'—'}</div>
+                <div style="font-size:11px;color:${statusColor[g2s]};font-weight:700;margin-top:3px">${statusLabel[g2s]}</div>
+                ${l.g2RespondedOn?`<div style="font-size:10px;color:var(--muted);margin-top:2px">🕐 ${l.g2RespondedOn}</div>`:''}
+                ${l.g2Note?`<div style="font-size:11px;color:var(--secondary);margin-top:3px;font-style:italic">"${l.g2Note}"</div>`:''}
+              </div>
+            </div>
+            ${l.status==='awaiting_guarantors'&&(g1s==='rejected'||g2s==='rejected')?`
+            <div class="alert" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;margin-top:10px;font-size:12px">
+              ❌ एक जमानीले अनुरोध अस्वीकार गर्नुभयो। कृपया
+              <button onclick="memberTab('apply-loan',document.querySelector('.msb-btn[onclick*=\\'apply-loan\\']'))"
+                style="color:var(--primary);background:none;border:none;cursor:pointer;font-weight:700;font-size:12px;text-decoration:underline;font-family:inherit">
+                नयाँ आवेदन पेश गर्नुहोस्
+              </button> अर्को जमानी राखेर।
+            </div>`:''}
+          </div>`;
+        }).join('')}
+    </div>
+
+    <!-- PAST RESPONSES I GAVE -->
+    ${responded.length>0?`
+    <div class="card">
+      <div class="card-title" style="color:var(--muted)">मेरा पुराना जमानी जवाफहरू</div>
+      ${responded.map(l=>{
+        const slot=String(l.guarantor1Id)===mId?'1':'2';
+        const status=slot==='1'?l.g1Status:l.g2Status;
+        const respondedOn=slot==='1'?l.g1RespondedOn:l.g2RespondedOn;
+        const note=slot==='1'?l.g1Note:l.g2Note;
+        return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div class="av" style="width:36px;height:36px;font-size:11px;flex-shrink:0">${ini(l.memberName||'?')}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${l.memberName} — ${fmt(l.amount)}</div>
+            <div style="font-size:11px;color:var(--muted)">${fmtDate(l.date)} · ${l.loanType||'—'}</div>
+            ${note?`<div style="font-size:11px;color:var(--secondary);font-style:italic">"${note}"</div>`:''}
+          </div>
+          <div style="text-align:right">
+            <span class="badge ${status==='accepted'?'bv':'br'}">${status==='accepted'?'✅ स्वीकृत':'❌ अस्वीकृत'}</span>
+            ${respondedOn?`<div style="font-size:10px;color:var(--muted);margin-top:3px">🕐 ${respondedOn}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`:''}`;
+}
+
+async function respondGuarantor(loanRequestId, slot, decision){
+  const l=(APP.loanRequests||[]).find(x=>String(x.id)===String(loanRequestId));
+  if(!l)return;
+  const m=APP.currentUser;
+  const name=slot==='1'?l.guarantor1Name:l.guarantor2Name;
+
+  if(!confirm(`${decision==='accepted'?'✅ स्वीकार':'❌ अस्वीकार'} — ${l.memberName}को ${fmt(l.amount)} ऋणका लागि जमानी?\n\n${decision==='accepted'?'स्वीकार गरेमा तपाईं कानुनी रूपमा जिम्मेवार हुनुहुन्छ।':'यसले आवेदकलाई अर्को जमानी छान्न सूचित गर्नेछ।'}`))return;
+
+  // timestamp: BS date + time
+  const now=new Date();
+  const timeStr=now.toTimeString().slice(0,8);
+  const timestamp=todayBS()+' '+timeStr;
+
+  showLoader('जवाफ सुरक्षित गर्दै...');
+  const updates={};
+  if(slot==='1'){
+    updates.g1Status=decision;
+    updates.g1RespondedOn=timestamp;
+    l.g1Status=decision;l.g1RespondedOn=timestamp;
+  } else {
+    updates.g2Status=decision;
+    updates.g2RespondedOn=timestamp;
+    l.g2Status=decision;l.g2RespondedOn=timestamp;
+  }
+
+  // check if both guarantors now done — if both accepted → move to pending for admin
+  const g1Done=(l.g1Status==='accepted'||l.g1Status==='na'||l.g1Status==='rejected');
+  const g2Done=(l.g2Status==='accepted'||l.g2Status==='na'||l.g2Status==='rejected');
+  const g1Ok=(l.g1Status==='accepted'||l.g1Status==='na');
+  const g2Ok=(l.g2Status==='accepted'||l.g2Status==='na');
+
+  if(decision==='accepted'&&g1Ok&&g2Ok){
+    updates.status='pending';
+    l.status='pending';
+  } else if(decision==='rejected'){
+    updates.status='awaiting_guarantors';
+    l.status='awaiting_guarantors';
+  }
+
+  await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'update',sheet:'LoanRequests',id:loanRequestId,data:updates})});
+
+  // Notify the loan applicant
+  const notifBody=decision==='accepted'
+    ?`${m.fullname} (${m.memberid||m.id}) has accepted to be your guarantor for the ${fmt(l.amount)} loan. ${g1Ok&&g2Ok?'Both guarantors accepted — your application is now sent to admin for review!':''}`
+    :`${m.fullname} (${m.memberid||m.id}) has declined to be your guarantor for the ${fmt(l.amount)} loan. Please submit a new application with a different guarantor.`;
+
+  await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+    action:'insert',sheet:'Notifications',
+    data:{
+      id:Date.now()+Math.floor(Math.random()*999),
+      memberid:String(l.memberId),
+      title:decision==='accepted'?'✅ Guarantor Accepted':'❌ Guarantor Rejected',
+      body:notifBody,
+      time:todayBS(),read:'false',type:decision==='accepted'?'success':'warning',
+      icon:decision==='accepted'?'✅':'❌'
+    }
+  })});
+
+  hideLoader();
+  updateGuarantorBadge();
+  renderGuarantorRequests(document.getElementById('member-main'),m);
+  alert(decision==='accepted'
+    ?`✅ तपाईंले ${l.memberName}को लागि जमानी स्वीकार गर्नुभयो।\nमिति/समय: ${timestamp}`
+    :`❌ जमानी अनुरोध अस्वीकार गर्नुभयो।\nमिति/समय: ${timestamp}`);
+}
+
+function promptRejectGuarantor(loanRequestId, slot){
+  const reason=prompt('अस्वीकार गर्नुको कारण (ऐच्छिक — आवेदकलाई जानकारी दिइनेछ):','');
+  if(reason===null)return; // cancelled
+  const l=(APP.loanRequests||[]).find(x=>String(x.id)===String(loanRequestId));
+  if(!l)return;
+  const m=APP.currentUser;
+  const now=new Date();
+  const timestamp=todayBS()+' '+now.toTimeString().slice(0,8);
+
+  showLoader('जवाफ सुरक्षित गर्दै...');
+  const updates={};
+  if(slot==='1'){updates.g1Status='rejected';updates.g1RespondedOn=timestamp;updates.g1Note=reason||'';l.g1Status='rejected';l.g1RespondedOn=timestamp;l.g1Note=reason||'';}
+  else{updates.g2Status='rejected';updates.g2RespondedOn=timestamp;updates.g2Note=reason||'';l.g2Status='rejected';l.g2RespondedOn=timestamp;l.g2Note=reason||'';}
+  updates.status='awaiting_guarantors';l.status='awaiting_guarantors';
+
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'update',sheet:'LoanRequests',id:loanRequestId,data:updates})});
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+    action:'insert',sheet:'Notifications',
+    data:{
+      id:Date.now()+Math.floor(Math.random()*999),
+      memberid:String(l.memberId),
+      title:'❌ Guarantor Rejected',
+      body:`${m.fullname} has declined to be your guarantor for the ${fmt(l.amount)} loan.${reason?' Reason: '+reason:''} Please submit a new application with a different guarantor.`,
+      time:todayBS(),read:'false',type:'warning',icon:'❌'
+    }
+  })});
+
+  hideLoader();
+  updateGuarantorBadge();
+  renderGuarantorRequests(document.getElementById('member-main'),m);
+  alert(`❌ जमानी अनुरोध अस्वीकार गर्नुभयो।\nमिति/समय: ${timestamp}`);
 }
 
 function renderNotifications(el){
@@ -1849,6 +2251,7 @@ function updateSidebarAvatar(){
   } else {
     av.textContent=ini(m.fullname);
   }
+  syncMobSidebar();
 }
 
 (async function init(){
@@ -1866,6 +2269,7 @@ function updateSidebarAvatar(){
   // update avatar with fresh photo if changed
   updateSidebarAvatar();
   renderNotifPanel();
+  updateGuarantorBadge();
   hideLoader();
 
   // restore last active tab
