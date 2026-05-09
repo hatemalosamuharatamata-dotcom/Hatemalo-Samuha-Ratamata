@@ -1488,7 +1488,7 @@ function renderAdminLoans(el){
   const pending=APP.loanRequests.filter(l=>l.status==='pending');
   const awaitingG=APP.loanRequests.filter(l=>l.status==='awaiting_guarantors');
   const approved=APP.loanRequests.filter(l=>l.status==='approved');
-  const rejected=APP.loanRequests.filter(l=>l.status==='rejected');
+  const rejected=APP.loanRequests.filter(l=>l.status==='rejected'||l.status==='guarantor_rejected');
   window.__loanHistory=[...approved,...rejected].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const history=window.__loanHistory;
   const PAGE=10,pages=Math.ceil(history.length/PAGE),page1=history.slice(0,PAGE);
@@ -1503,7 +1503,7 @@ function renderAdminLoans(el){
       <td style="${tdStyle}">${fmtDate(l.date)}</td>
       <td style="${tdStyle};font-weight:700;color:var(--success)">${l.approvedAmount?fmt(l.approvedAmount):'—'}</td>
       <td style="${tdStyle}">${fmtDate(l.approvedOn||'—')}</td>
-      <td style="${tdStyle}"><span class="badge ${l.status==='approved'?'bv':'br'}">${l.status}</span></td>
+      <td style="${tdStyle}"><span class="badge ${l.status==='approved'?'bv':'br'}">${l.status==='guarantor_rejected'?'❌ Guarantor Rejected':l.status==='approved'?'✅ Approved':l.status==='rejected'?'❌ Rejected':l.status}</span></td>
       <td style="${tdStyle}">${l.pdfUrl?`<a href="${l.pdfUrl}" target="_blank" style="font-size:11px;color:#185FA5;white-space:nowrap">📄 View PDF</a>`:'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
     </tr>`;
   };
@@ -1538,7 +1538,7 @@ function renderAdminLoans(el){
 
     <div class="card" style="margin-bottom:16px">
       <div class="card-title">Pending Loan Requests (${pending.length})
-        <span style="font-size:11px;font-weight:400;color:var(--success)">✅ Both guarantors confirmed</span>
+        ${pending.length>0?`<span style="font-size:11px;font-weight:400;color:var(--success)">✅ Both guarantors confirmed</span>`:''}
       </div>
       ${pending.length===0?'<p style="font-size:13px;color:var(--muted)">No pending requests.</p>':`
       <div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1670,7 +1670,7 @@ window.loanHistPage=function(page){
       <td style="${tdStyle}">${fmtDate(l.date)}</td>
       <td style="${tdStyle};font-weight:700;color:var(--success)">${l.approvedAmount?fmt(l.approvedAmount):'—'}</td>
       <td style="${tdStyle}">${fmtDate(l.approvedOn||'—')}</td>
-      <td style="${tdStyle}"><span class="badge ${l.status==='approved'?'bv':'br'}">${l.status}</span></td>
+      <td style="${tdStyle}"><span class="badge ${l.status==='approved'?'bv':'br'}">${l.status==='guarantor_rejected'?'❌ Guarantor Rejected':l.status==='approved'?'✅ Approved':l.status==='rejected'?'❌ Rejected':l.status}</span></td>
       <td style="${tdStyle}">${l.pdfUrl?`<a href="${l.pdfUrl}" target="_blank" style="font-size:11px;color:#185FA5;white-space:nowrap">📄 View PDF</a>`:'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -3468,21 +3468,25 @@ async function generateExcelReport(){
   showLoader('Generating Excel report...');
 
   // ── Filter data ───────────────────────────────────────────
+  const BS_MONTH_IDX = ['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'].indexOf(month)+1;
+  const monthPad = String(BS_MONTH_IDX).padStart(2,'0');
+
   function matchesPeriod(d){
-    const dMonth = String(d.month||'');
     const dYear  = String(d.year || (d.date||'').split('-')[0] || '');
     if(type==='yearly') return dYear === String(year);
-    return dMonth.startsWith(month) && dYear === String(year);
+    // match by BS month name in month field (for dues/monthly)
+    const dMonth = String(d.month||'');
+    if(dMonth.startsWith(month) && dYear === String(year)) return true;
+    // fallback: match by date field YYYY-MM (BS date)
+    const dDate = String(d.date||'');
+    return dDate.startsWith(`${year}-${monthPad}`);
   }
 
-  const filteredDues      = APP.dues.filter(d => d.status==='paid' && matchesPeriod(d));
+  const filteredDues      = APP.dues.filter(d => d.status==='paid' && d.type!=='loan_repayment' && matchesPeriod(d));
   const filteredRepayments= APP.dues.filter(d => d.type==='loan_repayment' && matchesPeriod(d));
   const filteredExpenses  = (APP.expenses||[]).filter(e => {
-    const eYear  = String((e.date||'').split('-')[0]);
-    const eMonth = (e.date||'').substring(5,7);
-    const monthIndex = ['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'].indexOf(month)+1;
-    if(type==='yearly') return eYear === String(year);
-    return eYear === String(year) && parseInt(eMonth) === monthIndex;
+    if(type==='yearly') return String((e.date||'').split('-')[0]) === String(year);
+    return String(e.date||'').startsWith(`${year}-${monthPad}`);
   });
 
   const verifiedMembers   = memberSort(APP.members.filter(m=>m.status==='verified'));
@@ -3503,35 +3507,73 @@ async function generateExcelReport(){
   // We'll mark header rows clearly with ALL CAPS
 
   // ── SHEET 1: Summary ─────────────────────────────────────
+  // All-time group fund calculations
+  const allTimeDues       = APP.dues.filter(d=>d.status==='paid'&&d.type!=='loan_repayment').reduce((s,d)=>s+Number(d.amount),0);
+  const allTimeMonthly    = APP.dues.filter(d=>d.status==='paid'&&d.type==='monthly').reduce((s,d)=>s+Number(d.amount),0);
+  const allTimeInitial    = APP.dues.filter(d=>d.status==='paid'&&d.type==='initial').reduce((s,d)=>s+Number(d.amount),0);
+  const allTimeSpecial    = APP.dues.filter(d=>d.status==='paid'&&d.type==='special').reduce((s,d)=>s+Number(d.amount),0);
+  const activeLoansArr    = APP.loans.filter(l=>l.status==='active');
+  const allLoansArr       = APP.loans;
+  const activeLoanTotal   = activeLoansArr.reduce((s,l)=>s+Number(l.amount),0);
+  const activeLoanRepaid  = activeLoansArr.reduce((s,l)=>s+Number(l.repaid),0);
+  const activeLoanOutstanding = activeLoansArr.reduce((s,l)=>s+Math.max(0,(Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable)-Number(l.repaid)),0);
+  const estInterest       = allLoansArr.reduce((s,l)=>s+(Number(l.interest)||calcLoan(l.amount,l.rate,l.months).interest),0);
+  const allTimeExpenses   = (APP.expenses||[]).reduce((s,e)=>s+Number(e.amount),0);
+  const netFundAllTime    = allTimeDues + Math.round(estInterest) - activeLoanOutstanding - allTimeExpenses;
+
   const summaryData = [
-    ['HATEMALO SAMUHA — FINANCIAL REPORT'],
-    [type==='yearly' ? `Full Year Report: BS ${year}` : `Monthly Report: ${month} ${year} (BS)`],
-    ['Generated on:', todayBS()],
+    ['रातमाटा हातेमालो समुह — HATEMALO SAMUHA'],
+    ['ज्वालामुखी गा.पा.-०१, रातमाटा, धादिङ्ग, नेपाल'],
     [''],
-    ['SUMMARY', ''],
-    ['Total Members', verifiedMembers.length],
-    ['Report Period', label],
+    [type==='yearly' ? `वार्षिक प्रतिवेदन / Full Year Report: BS ${year}` : `मासिक प्रतिवेदन / Monthly Report: ${month} ${year} (BS)`],
+    [`उत्पन्न मिति / Generated on: ${todayBS()}`],
     [''],
-    ['INCOME', 'Amount (Rs)'],
-    ['Monthly Dues Collected', monthlyDuesAmt],
-    ['Initial Deposits', initialAmt],
-    ['Special / Event Contributions', specialAmt],
-    ['Loan Repayments Received', totalRepaidAmt],
-    ['TOTAL INCOME', totalDuesAmt + totalRepaidAmt],
+    ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', ''],
+    ['समूहको समग्र वित्तीय अवस्था / GROUP FUND OVERVIEW (All Time)', ''],
+    ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', ''],
+    ['जम्मा सदस्य / Total Members', verifiedMembers.length],
     [''],
-    ['EXPENSES', 'Amount (Rs)'],
-    ['Total Expenses', totalExpenseAmt],
+    ['-- संकलन / COLLECTIONS --', 'Amount (Rs)'],
+    ['जम्मा संकलित रकम / Total Fund Collected', allTimeDues],
+    ['   └ मासिक बचत / Monthly Dues', allTimeMonthly],
+    ['   └ प्रारम्भिक जम्मा / Initial Deposits', allTimeInitial],
+    ['   └ विशेष योगदान / Special Contributions', allTimeSpecial],
     [''],
-    ['NET FUND', 'Amount (Rs)'],
-    ['Net Fund (Income − Expenses)', netFund],
+    ['-- ऋण / LOANS --', ''],
+    ['सक्रिय ऋण संख्या / Active Loans Count', activeLoansArr.length],
+    ['सक्रिय ऋण जम्मा / Active Loans Total (Principal)', activeLoanTotal],
+    ['सक्रिय ऋण तिरिएको / Active Loans Repaid', activeLoanRepaid],
+    ['सक्रिय ऋण बाँकी / Active Loans Outstanding', activeLoanOutstanding],
+    ['अनुमानित ब्याज / Est. Interest Earned (All Loans)', Math.round(estInterest)],
     [''],
-    ['LOANS (All Active)', ''],
-    ['Total Loans Outstanding', APP.loans.filter(l=>l.status==='active').reduce((s,l)=>s+(Number(l.amount)-Number(l.repaid)),0)],
-    ['Total Loan Principal Issued', APP.loans.reduce((s,l)=>s+Number(l.amount),0)],
-    ['Total Repaid (all time)', APP.loans.reduce((s,l)=>s+Number(l.repaid),0)],
+    ['-- खर्च / EXPENSES --', ''],
+    ['जम्मा खर्च / Total Expenses (All Time)', allTimeExpenses],
+    [''],
+    ['-- NET FUND --', ''],
+    ['शुद्ध कोष / NET FUND REMAINING', netFundAllTime],
+    ['  (संकलन + ब्याज − बाँकी ऋण − खर्च)', ''],
+    [''],
+    ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', ''],
+    [type==='yearly'
+      ? `${year} BS वार्षिक विवरण / YEARLY BREAKDOWN`
+      : `${month} ${year} BS मासिक विवरण / MONTHLY BREAKDOWN`,''],
+    ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', ''],
+    [''],
+    ['-- आम्दानी / INCOME THIS PERIOD --', 'Amount (Rs)'],
+    ['मासिक बचत / Monthly Dues Collected', monthlyDuesAmt],
+    ['प्रारम्भिक जम्मा / Initial Deposits', initialAmt],
+    ['विशेष योगदान / Special Contributions', specialAmt],
+    ['ऋण किस्ता प्राप्त / Loan Repayments Received', totalRepaidAmt],
+    ['जम्मा आम्दानी / TOTAL INCOME', monthlyDuesAmt + initialAmt + specialAmt + totalRepaidAmt],
+    [''],
+    ['-- खर्च / EXPENSES THIS PERIOD --', 'Amount (Rs)'],
+    ['यस अवधिको खर्च / Expenses This Period', totalExpenseAmt],
+    [''],
+    ['-- यस अवधिको शुद्ध / NET THIS PERIOD --', 'Amount (Rs)'],
+    ['शुद्ध / Net (Income − Expenses)', netFund],
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-  wsSummary['!cols'] = [{wch:38},{wch:20}];
+  wsSummary['!cols'] = [{wch:48},{wch:22}];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   // ── SHEET 2: Monthly Dues ─────────────────────────────────

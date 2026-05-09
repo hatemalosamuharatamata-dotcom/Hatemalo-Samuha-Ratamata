@@ -1724,7 +1724,7 @@ function renderGuarantorRequests(el,m){
                 <div style="font-size:11px;color:var(--muted)">आवेदन: ${fmtDate(l.date)} · ${l.months||'?'} महिना</div>
               </div>
               <span class="badge ${l.status==='approved'?'bv':l.status==='rejected'?'br':l.status==='awaiting_guarantors'?'ba':'bb'}">
-                ${l.status==='awaiting_guarantors'?'⏳ जमानीको प्रतीक्षा':
+                ${l.status==='awaiting_guarantors'?'⏳ जमानीको प्रतीक्षा':l.status==='guarantor_rejected'?'❌ जमानीले अस्वीकार गर्नुभयो':
                   l.status==='pending'?'📋 प्रशासकको समीक्षाको प्रतीक्षा':
                   l.status==='approved'?'✅ स्वीकृत':
                   l.status==='rejected'?'❌ अस्वीकृत':l.status}
@@ -1746,7 +1746,7 @@ function renderGuarantorRequests(el,m){
                 ${l.g2Note?`<div style="font-size:11px;color:var(--secondary);margin-top:3px;font-style:italic">"${l.g2Note}"</div>`:''}
               </div>
             </div>
-            ${l.status==='awaiting_guarantors'&&(g1s==='rejected'||g2s==='rejected')?`
+            ${(l.status==='awaiting_guarantors'||l.status==='guarantor_rejected')&&(g1s==='rejected'||g2s==='rejected')?`
             <div class="alert" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;margin-top:10px;font-size:12px">
               ❌ एक जमानीले अनुरोध अस्वीकार गर्नुभयो। कृपया
               <button onclick="memberTab('apply-loan',document.querySelector('.msb-btn[onclick*=\\'apply-loan\\']'))"
@@ -1818,8 +1818,8 @@ async function respondGuarantor(loanRequestId, slot, decision){
     updates.status='pending';
     l.status='pending';
   } else if(decision==='rejected'){
-    updates.status='awaiting_guarantors';
-    l.status='awaiting_guarantors';
+    updates.status='guarantor_rejected';
+    l.status='guarantor_rejected';
   }
 
   await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'update',sheet:'LoanRequests',id:loanRequestId,data:updates})});
@@ -1862,7 +1862,7 @@ function promptRejectGuarantor(loanRequestId, slot){
   const updates={};
   if(slot==='1'){updates.g1Status='rejected';updates.g1RespondedOn=timestamp;updates.g1Note=reason||'';l.g1Status='rejected';l.g1RespondedOn=timestamp;l.g1Note=reason||'';}
   else{updates.g2Status='rejected';updates.g2RespondedOn=timestamp;updates.g2Note=reason||'';l.g2Status='rejected';l.g2RespondedOn=timestamp;l.g2Note=reason||'';}
-  updates.status='awaiting_guarantors';l.status='awaiting_guarantors';
+  updates.status='guarantor_rejected';l.status='guarantor_rejected';
 
   fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'update',sheet:'LoanRequests',id:loanRequestId,data:updates})});
   fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
