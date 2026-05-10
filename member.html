@@ -498,7 +498,8 @@ const myLoans=APP.loans.filter(l=>
 function renderGroupFinance(el) {
   // ── Group-wide totals ────────────────────────────────
   const verifiedMembers = APP.members.filter(m => m.status === 'verified');
-  const totalDues       = APP.dues.filter(d => d.status === 'paid').reduce((s,d) => s + Number(d.amount), 0);
+  const totalDues       = APP.dues.filter(d => d.status === 'paid' && d.type !== 'loan_repayment' && d.type !== 'loan-fee').reduce((s,d) => s + Number(d.amount), 0);
+  const specialTotal    = APP.dues.filter(d => d.status === 'paid' && d.type === 'special').reduce((s,d) => s + Number(d.amount), 0);
   const activeLoans     = APP.loans.filter(l => l.status === 'active');
   const totalLoans      = activeLoans.reduce((s,l) => s + Number(l.amount), 0);
   const totalRepaid     = activeLoans.reduce((s,l) => s + Number(l.repaid), 0);
@@ -512,6 +513,11 @@ function renderGroupFinance(el) {
   const totalExpenses   = (APP.expenses || []).reduce((s,e) => s + Number(e.amount), 0);
   const netFund         = totalDues + Math.round(interest) - outstanding - totalExpenses;
 
+  // ── Correct receivable formula ───────────────────────
+  // Shared profit = Special contributions + Interest − Expenses ÷ members
+  const sharedPool    = specialTotal + Math.round(interest) - totalExpenses;
+  const profitShare   = verifiedMembers.length > 0 ? Math.round(sharedPool / verifiedMembers.length) : 0;
+
   // ── Member's own totals ──────────────────────────────
   const m       = APP.currentUser;
   const myDues  = APP.dues.filter(d =>
@@ -522,15 +528,15 @@ function renderGroupFinance(el) {
     String(l.memberId) === String(m.id) ||
     String(l.memberId) === String(m.memberid)
   );
-  const myPaid        = myDues.filter(d => d.status === 'paid').reduce((s,d) => s + Number(d.amount), 0);
+  const myInitial     = myDues.filter(d => d.status === 'paid' && d.type === 'initial').reduce((s,d) => s + Number(d.amount), 0);
+  const myMonthly     = myDues.filter(d => d.status === 'paid' && d.type === 'monthly').reduce((s,d) => s + Number(d.amount), 0);
+  const myPaid        = myInitial + myMonthly;
   const myOutstanding = myLoans.filter(l => l.status === 'active').reduce((s,l) => {
     const total = Number(l.totalPayable) || calcLoan(l.amount, l.rate, l.months).totalPayable;
-    return s + (total - Number(l.repaid));
+    return s + Math.max(0, total - Number(l.repaid));
   }, 0);
-  const myInterest = myLoans.reduce((s,l) => {
-    return s + (Number(l.interest) || calcLoan(l.amount, l.rate, l.months).interest);
-  }, 0);
-  const myNet = myPaid - myOutstanding;
+  const myNet         = myPaid - myOutstanding;
+  const myReceivable  = myPaid + profitShare - myOutstanding;
 
   // ── My share % of group fund ─────────────────────────
   const myShare = totalDues > 0 ? ((myPaid / totalDues) * 100).toFixed(1) : '0.0';
@@ -592,7 +598,7 @@ function renderGroupFinance(el) {
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
       <div class="sc2"><div class="sc2-label">My Total Deposited</div><div class="sc2-val" style="color:var(--primary)">${fmt(myPaid)}</div></div>
-      <div class="sc2" style="background:#f0fdf4;border-color:#86efac"><div class="sc2-label" style="color:var(--success)">My Equal Share</div><div class="sc2-val" style="color:var(--success)">${fmt(verifiedMembers.length>0?Math.round((totalDues+Math.round(interest)-totalExpenses)/verifiedMembers.length):0)}</div><div class="sc2-sub">if fund distributed equally today</div></div>
+      <div class="sc2" style="background:#f0fdf4;border-color:#86efac"><div class="sc2-label" style="color:var(--success)">My Est. Receivable</div><div class="sc2-val" style="color:var(--success)">${fmt(myReceivable)}</div><div class="sc2-sub">Own deposits + profit share − loan</div></div>
       <div class="sc2" style="background:${myNet>=0?'#f0fdf4':'#fff5f5'};border-color:${myNet>=0?'#86efac':'#fca5a5'}"><div class="sc2-label" style="color:${myNet>=0?'var(--success)':'var(--secondary)'}">My Net Balance</div><div class="sc2-val" style="color:${myNet>=0?'var(--success)':'var(--secondary)'}">${fmt(myNet)}</div><div class="sc2-sub">Deposited − loan outstanding</div></div>
     </div>
 
