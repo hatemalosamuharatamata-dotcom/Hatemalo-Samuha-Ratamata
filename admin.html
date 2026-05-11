@@ -191,6 +191,7 @@ body{font-family:'Poppins',sans-serif;background:var(--light);color:var(--text)}
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8Lcwa0h_tDLFBWkEKMfOn8hAdJ_5gn9nUzHpuBgruBEYKpdYXB9Vf6fVltk0bvvCi/exec';
+const API_TOKEN = 'b2e202bfcfc0d531c12a338119eb117ced91325de26c93e09cf8e5d47bd1d66d';
 const MONTHLY_DUES = 1100;
 const INITIAL_DEPOSIT = 5000;
 
@@ -352,7 +353,7 @@ async function apiCall(action,sheet,data={}){
 async function loadAllData(msg='Fetching latest data, please wait...'){
   showLoader(msg);
   try{
-    const res=await fetch(`${SCRIPT_URL}?action=getAllSheets`);
+    const res=await fetch(`${SCRIPT_URL}?action=getAllSheets&token=${API_TOKEN}`);
     const data=await res.json();
     if(data.members)         APP.members         =data.members;
     if(data.dues)            APP.dues            =data.dues;
@@ -392,7 +393,7 @@ async function uploadFileToGDrive(file,label){
           canvas.width=w;canvas.height=h;
           canvas.getContext('2d').drawImage(img,0,0,w,h);
           const base64=canvas.toDataURL('image/jpeg',0.7).split(',')[1];
-          try{const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'.jpg',base64Data:base64,mimeType:'image/jpeg'})});const data=await res.json();resolve(data.url||null);}
+          try{const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'.jpg',base64Data:base64,mimeType:'image/jpeg',token:API_TOKEN})});const data=await res.json();resolve(data.url||null);}
           catch(e){resolve(null);}
         };
         img.src=e.target.result;
@@ -403,7 +404,7 @@ async function uploadFileToGDrive(file,label){
       const reader=new FileReader();
       reader.onload=async(e)=>{
         const base64=e.target.result.split(',')[1];
-        try{const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'_'+file.name,base64Data:base64,mimeType:file.type})});const data=await res.json();resolve(data.url||null);}
+        try{const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:label+'_'+file.name,base64Data:base64,mimeType:file.type,token:API_TOKEN})});const data=await res.json();resolve(data.url||null);}
         catch(e){resolve(null);}
       };
       reader.readAsDataURL(file);
@@ -494,10 +495,24 @@ function renderAdminDash(el){
   const activeLoans=APP.loans.filter(l=>l.status==='active');
   const totalLoans=activeLoans.reduce((s,l)=>s+Number(l.amount),0);
   const totalRepaid=activeLoans.reduce((s,l)=>s+Number(l.repaid),0);
+  const allLoansRepaid=APP.loans.reduce((s,l)=>s+Number(l.repaid),0);
+  const allLoansDisbursed=APP.loans.reduce((s,l)=>s+Number(l.amount),0);
   const outstanding=activeLoans.reduce((s,l)=>s+Math.max(0,(Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable)-Number(l.repaid)),0);
   const interest=APP.loans.reduce((s,l)=>s+(Number(l.interest)||calcLoan(l.amount,l.rate,l.months).interest),0);
   const totalExpenses=(APP.expenses||[]).reduce((s,e)=>s+Number(e.amount),0);
   const netFund=totalDues+Math.round(interest)-outstanding-totalExpenses;
+  const cashInHand=(totalDues+allLoansRepaid)-(allLoansDisbursed+totalExpenses);
+
+  // Rounding surplus: difference between rounded installments and exact amounts
+  const roundingSurplus=APP.loans.reduce((s,l)=>{
+    const calc=calcLoan(l.amount,l.rate,l.months);
+    const exactMonthly=(Number(l.totalPayable)||calc.totalPayable)/Number(l.months);
+    const roundedMonthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
+    const extraPerInstall=roundedMonthly-exactMonthly;
+    // Count how many installments have been paid
+    const installsPaid=APP.dues.filter(d=>String(d.loanId)===String(l.id)&&d.type==='loan_repayment').length;
+    return s+(extraPerInstall*installsPaid);
+  },0);
   el.innerHTML=`
     <div class="ph"><h2>Admin Dashboard</h2><p>Financial overview — Hatemalo Samuha</p></div>
     <div class="sg3" style="margin-bottom:12px">
@@ -505,10 +520,34 @@ function renderAdminDash(el){
       <div class="sc2"><div class="sc2-label">Active Loans Total</div><div class="sc2-val" style="color:var(--secondary)">${fmt(totalLoans)}</div><div class="sc2-sub">${activeLoans.length} active loans</div></div>
       <div class="sc2"><div class="sc2-label">Est. Interest Earned</div><div class="sc2-val" style="color:var(--warning)">${fmt(Math.round(interest))}</div><div class="sc2-sub">From all loans</div></div>
     </div>
-    <div class="sg3" style="margin-bottom:18px">
+    <div class="sg3" style="margin-bottom:12px">
       <div class="sc2"><div class="sc2-label">Active Loans Repaid</div><div class="sc2-val" style="color:var(--success)">${fmt(totalRepaid)}</div><div class="sc2-sub">Outstanding: ${fmt(outstanding)}</div></div>
       <div class="sc2" style="border:2px solid var(--secondary)"><div class="sc2-label" style="color:var(--secondary)">Total Expenses</div><div class="sc2-val" style="color:var(--secondary)">${fmt(totalExpenses)}</div><div class="sc2-sub">${(APP.expenses||[]).length} expense records</div></div>
       <div class="sc2" style="border:2px solid var(--success);background:#f0fdf4"><div class="sc2-label" style="color:var(--success);font-weight:700">NET FUND REMAINING</div><div class="sc2-val" style="color:${netFund>=0?'var(--success)':'var(--secondary)'};font-size:22px">${fmt(netFund)}</div><div class="sc2-sub">Collected + Interest − Loans Out − Expenses</div></div>
+    </div>
+    <!-- Cash in Hand highlight card -->
+    <div style="background:linear-gradient(135deg,#003366,#1d4ed8);border-radius:14px;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">💵 ACTUAL CASH IN HAND</div>
+        <div style="color:white;font-size:32px;font-weight:800">${fmt(cashInHand)}</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:11px;margin-top:4px">All collections + repayments − loans disbursed − expenses</div>
+        ${roundingSurplus>0?`<div style="margin-top:8px;background:rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;display:inline-block">
+          <span style="color:#fde68a;font-size:11px;font-weight:700">⚡ Rounding Surplus: ${fmt(Math.round(roundingSurplus))}</span>
+          <span style="color:rgba(255,255,255,0.5);font-size:10px;margin-left:4px">(extra collected from rounded installments)</span>
+        </div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:260px">
+        <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px">
+          <div style="color:rgba(255,255,255,0.6);font-size:10px;font-weight:700">CASH IN</div>
+          <div style="color:#86efac;font-size:14px;font-weight:700;margin-top:2px">+ ${fmt(totalDues+allLoansRepaid)}</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:10px">Collections + Repayments</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px">
+          <div style="color:rgba(255,255,255,0.6);font-size:10px;font-weight:700">CASH OUT</div>
+          <div style="color:#fca5a5;font-size:14px;font-weight:700;margin-top:2px">− ${fmt(allLoansDisbursed+totalExpenses)}</div>
+          <div style="color:rgba(255,255,255,0.5);font-size:10px">Loans Disbursed + Expenses</div>
+        </div>
+      </div>
     </div>
     <div class="sg2">
       <div class="card"><div class="card-title">Monthly Dues Collection</div><div class="leg"><div class="leg-i"><div class="leg-sq" style="background:#3b82f6"></div>Collected</div><div class="leg-i"><div class="leg-sq" style="background:#e5e7eb"></div>Expected</div></div><div class="chart-wrap"><canvas id="c-dues"></canvas></div></div>
@@ -726,7 +765,7 @@ function renderAdminMembers(el){
       <div class="sc2"><div class="sc2-label">Total Members</div><div class="sc2-val">${sorted.length}</div></div>
       <div class="sc2"><div class="sc2-label">Verified</div><div class="sc2-val" style="color:var(--success)">${sorted.length}</div></div>
       <div class="sc2"><div class="sc2-label">Pending</div><div class="sc2-val" style="color:var(--warning)">${APP.members.filter(m=>m.status==='pending').length}</div></div>
-      <div class="sc2"><div class="sc2-label">This Month Dues</div><div class="sc2-val">${fmt(APP.dues.filter(d=>d.status==='paid').reduce((s,d)=>s+Number(d.amount),0))}</div></div>
+      
     </div>
     <div class="card">
       <div class="card-title">All Members
@@ -899,7 +938,7 @@ async function verifyMember(id){
   showLoader('Verifying member...');
   m.status='verified';m.memberid=memberId;
   await updateSheet('Members',id,{status:'verified',memberid:memberId});
-  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app'})});}
+  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app',token:API_TOKEN})});}
   addNotification('Account Verified',`${m.fullname} verified — Member ID: ${memberId}`,'success','✅',memberId);
   hideLoader();updateBadges();renderAdminVerify(document.getElementById('admin-main'));
   alert(`✅ ${m.fullname} verified!\nMember ID: ${memberId}`);
@@ -915,7 +954,7 @@ async function verifyMemberFromModal(id){
   if(!confirm(`Verify ${m.fullname} with Member ID: ${memberId}?`))return;
   showLoader('Verifying...');m.status='verified';m.memberid=memberId;
   await updateSheet('Members',id,{status:'verified',memberid:memberId});
-  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app'})});}
+  if(m.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:m.email,name:m.fullname,username:m.username,memberId:memberId,website:'https://hatemalosamuha.vercel.app',token:API_TOKEN})});}
   addNotification('Account Verified',`${m.fullname} verified — Member ID: ${memberId}`,'success','✅',memberId);
   hideLoader();document.getElementById('profile-modal-bg').classList.remove('open');
   updateBadges();adminTab('verify');alert(`✅ ${m.fullname} verified!\nMember ID: ${memberId}`);
@@ -1066,7 +1105,7 @@ async function saveDocument(){
     const reader=new FileReader();
     const base64=await new Promise(resolve=>{reader.onload=e=>resolve(e.target.result.split(',')[1]);reader.readAsDataURL(file);});
     try{
-      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:'doc_'+Date.now()+'_'+file.name,base64Data:base64,mimeType})});
+      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:'doc_'+Date.now()+'_'+file.name,base64Data:base64,mimeType,token:API_TOKEN})});
       const data=await res.json();
       fileUrl=data.viewUrl||data.url||'';
     }catch(e){hideLoader();errEl.textContent='Upload failed. Try again.';errEl.classList.remove('hidden');return;}
@@ -1700,36 +1739,187 @@ async function recordRepayment(loanId){
   const totalPayable=Number(l.totalPayable)||calc.totalPayable;
   const monthly=Number(l.monthlyInstallment)||calc.monthlyInstallment;
   const alreadyRepaid=Number(l.repaid)||0;
-  const remaining=totalPayable-alreadyRepaid;
+  const remaining=Math.max(0,totalPayable-alreadyRepaid);
   const mem=getMember(l.memberId);
-  const amt=parseFloat(prompt(
-    `💰 Record Repayment — ${mem?.fullname||l.memberId}\n` +
-    `────────────────────────\n` +
-    `Monthly Installment: ${fmt(monthly)}\n` +
-    `Total Payable:       ${fmt(totalPayable)}\n` +
-    `Already Paid:        ${fmt(alreadyRepaid)}\n` +
-    `Remaining:           ${fmt(remaining)}\n` +
-    `────────────────────────\n` +
-    `Enter amount:`,
-    monthly
-  ));
-  if(isNaN(amt)||amt<=0)return;
+
+  // If this is the last installment, use exact remaining amount
+  const installsPaid=APP.dues.filter(d=>String(d.loanId)===String(loanId)&&d.type==='loan_repayment').length;
+  const isLastInstall=(installsPaid+1)>=Number(l.months);
+  const suggestedAmt=isLastInstall?remaining:monthly;
+
+  // Show modal with amount + date
+  const modalId='repay-modal-'+loanId;
+  const existing=document.getElementById(modalId);
+  if(existing)existing.remove();
+
+  const modal=document.createElement('div');
+  modal.id=modalId;
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML=`
+    <div style="background:white;border-radius:16px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <div class="av" style="width:42px;height:42px;font-size:14px;flex-shrink:0">${ini(mem?.fullname||'?')}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--primary)">💰 Record Repayment</div>
+          <div style="font-size:12px;color:var(--muted)">${mem?.fullname||l.memberId} · ${l.memberId}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f8faff;border-radius:10px;padding:12px;margin-bottom:18px;font-size:12px">
+        <div><div style="color:var(--muted)">Monthly Installment</div><div style="font-weight:700;color:var(--primary)">${fmt(monthly)}</div></div>
+        <div><div style="color:var(--muted)">Total Payable</div><div style="font-weight:700">${fmt(totalPayable)}</div></div>
+        <div><div style="color:var(--muted)">Already Paid</div><div style="font-weight:700;color:var(--success)">${fmt(alreadyRepaid)}</div></div>
+        <div><div style="color:var(--muted)">Remaining</div><div style="font-weight:700;color:var(--secondary)">${fmt(remaining)}</div></div>
+      </div>
+      ${isLastInstall?`<div class="alert alert-s" style="margin-bottom:14px;font-size:12px">
+        🏁 <strong>Last installment!</strong> Amount set to exact remaining balance <strong>${fmt(remaining)}</strong> to avoid any rounding surplus.
+      </div>`:''}
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--primary);display:block;margin-bottom:6px">Amount (Rs)</label>
+        <input id="repay-amt-${loanId}" type="number" value="${suggestedAmt}" min="1" max="${remaining}"
+          style="width:100%;padding:10px 12px;border:2px solid var(--primary);border-radius:8px;font-size:15px;font-weight:700;outline:none;box-sizing:border-box;font-family:inherit">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--primary);display:block;margin-bottom:6px">Payment Date (BS)</label>
+        <input id="repay-date-${loanId}" type="text" value="${todayBS()}" placeholder="YYYY-MM-DD"
+          style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit"
+          onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Format: YYYY-MM-DD (BS date)</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('${modalId}').remove()"
+          style="flex:1;padding:11px;background:#f3f4f6;color:var(--text);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">
+          Cancel
+        </button>
+        <button onclick="submitRepayment('${loanId}','${modalId}')"
+          style="flex:2;padding:11px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">
+          💰 Record Repayment
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  setTimeout(()=>document.getElementById(`repay-amt-${loanId}`)?.focus(),100);
+}
+
+async function submitRepayment(loanId, modalId){
+  const l=APP.loans.find(x=>String(x.id)===String(loanId));if(!l)return;
+  const amtInput=document.getElementById(`repay-amt-${loanId}`);
+  const dateInput=document.getElementById(`repay-date-${loanId}`);
+  const amt=parseFloat(amtInput?.value);
+  const repayDate=dateInput?.value?.trim()||todayBS();
+
+  if(isNaN(amt)||amt<=0){alert('Please enter a valid amount.');return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(repayDate)){alert('Please enter date in YYYY-MM-DD format.');return;}
+
+  document.getElementById(modalId)?.remove();
   showLoader('Recording repayment...');
+
+  const calc=calcLoan(l.amount,l.rate,l.months);
+  const totalPayable=Number(l.totalPayable)||calc.totalPayable;
+  const alreadyRepaid=Number(l.repaid)||0;
+  const remaining=totalPayable-alreadyRepaid;
   const newRepaid=Math.min(alreadyRepaid+amt,totalPayable);
   l.repaid=newRepaid;l.status=newRepaid>=totalPayable?'settled':'active';
   await updateSheet('Loans',loanId,{repaid:newRepaid,status:l.status});
+
   const mem2=getMember(l.memberId);
   const installCount=APP.dues.filter(d=>String(d.loanId)===String(loanId)&&d.type==='loan_repayment').length+1;
-  const repayDue={id:Date.now()+Math.floor(Math.random()*1000),memberId:mem2?.memberid||l.memberId,memberName:mem2?.fullname||'',year:todayBS().split('-')[0],month:'Loan Repayment '+todayBS().slice(0,7),amount:amt,date:todayBS(),status:'paid',type:'loan_repayment',note:'Loan ID: '+loanId,paymode:'Cash',loanId};
-  APP.dues.push(repayDue);await saveToSheet('Dues',repayDue);
-  const lrCalc=calcLoan(l.amount,l.rate,l.months);
-  const lrTotalPay=Number(l.totalPayable)||lrCalc.totalPayable;
-  const lrInterestT=Number(l.interest)||lrCalc.interest;
-  const lrIntPortion=Math.round(lrInterestT*(amt/lrTotalPay));
-  const lrRecord={id:Date.now()+Math.floor(Math.random()*999),loanId,memberId:mem2?.memberid||l.memberId,memberName:mem2?.fullname||'',installmentNo:installCount,amount:amt,interest:lrIntPortion,principal:amt-lrIntPortion,date:todayBS(),status:'paid',note:'Recorded via admin panel — Loan ID: '+loanId};
+  const bsYear=repayDate.split('-')[0];
+  const bsMonthNum=repayDate.split('-')[1];
+  const BS_MONTHS=['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
+  const bsMonthName=BS_MONTHS[parseInt(bsMonthNum)-1]||'';
+
+  const repayDue={
+    id:Date.now()+Math.floor(Math.random()*1000),
+    memberId:mem2?.memberid||l.memberId,
+    memberName:mem2?.fullname||'',
+    year:bsYear,
+    month:'Loan Repayment '+repayDate.slice(0,7),
+    amount:amt,date:repayDate,
+    status:'paid',type:'loan_repayment',
+    note:'Loan ID: '+loanId,
+    paymode:'Cash',loanId
+  };
+  APP.dues.push(repayDue);
+  await saveToSheet('Dues',repayDue);
+
+  const lrInterestT=Number(l.interest)||calc.interest;
+  const lrIntPortion=Math.round(lrInterestT*(amt/totalPayable));
+  const lrRecord={
+    id:Date.now()+Math.floor(Math.random()*999),
+    loanId,
+    memberId:mem2?.memberid||l.memberId,
+    memberName:mem2?.fullname||'',
+    installmentNo:installCount,
+    amount:amt,interest:lrIntPortion,
+    principal:amt-lrIntPortion,
+    date:repayDate,
+    status:'paid',
+    note:'Recorded via admin panel — Loan ID: '+loanId
+  };
   await saveToSheet('LoanRepayments',lrRecord);
   addNotification('Loan Repayment Recorded',`${fmt(amt)} repaid for ${mem2?.fullname||l.memberId}. Remaining: ${fmt(remaining-amt)}`,'loan','💰',mem2?.memberid||l.memberId);
-  hideLoader();renderAdminLoans(document.getElementById('admin-main'));
+  hideLoader();
+  renderAdminLoans(document.getElementById('admin-main'));
+}
+
+function viewMinutes(url){
+  if(!url)return;
+
+  // Convert Google Drive URL to proper preview/embed URL
+  function getDrivePreviewUrl(url){
+    // Extract file ID from various Drive URL formats
+    const patterns=[
+      /\/file\/d\/([^\/\?]+)/,
+      /id=([^&]+)/,
+      /\/d\/([^\/\?]+)/
+    ];
+    let fileId=null;
+    for(const p of patterns){const m=url.match(p);if(m){fileId=m[1];break;}}
+    if(fileId){
+      return {
+        preview:`https://drive.google.com/file/d/${fileId}/preview`,
+        download:`https://drive.google.com/uc?export=download&id=${fileId}`,
+        view:`https://drive.google.com/file/d/${fileId}/view`,
+        fileId
+      };
+    }
+    return {preview:url,download:url,view:url,fileId:null};
+  }
+
+  const {preview,download,view,fileId}=getDrivePreviewUrl(url);
+  const isPDF=url.toLowerCase().includes('.pdf')||url.includes('drive.google');
+
+  // Create full-screen modal
+  const modal=document.createElement('div');
+  modal.id='minutes-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column;';
+  modal.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--primary);color:white;flex-shrink:0">
+      <div style="font-size:14px;font-weight:700">📄 Meeting Minutes</div>
+      <div style="display:flex;gap:8px">
+        <a href="${view}" target="_blank"
+          style="padding:6px 14px;background:rgba(255,255,255,0.2);color:white;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600">
+          🔗 Open in Drive
+        </a>
+        <a href="${download}" target="_blank"
+          style="padding:6px 14px;background:rgba(255,255,255,0.2);color:white;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600">
+          ⬇️ Download
+        </a>
+        <button onclick="document.getElementById('minutes-modal').remove()"
+          style="padding:6px 14px;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">
+          ✕ Close
+        </button>
+      </div>
+    </div>
+    <div style="flex:1;overflow:hidden">
+      <iframe src="${preview}" style="width:100%;height:100%;border:none"
+        allow="autoplay" allowfullscreen>
+      </iframe>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('keydown',e=>{if(e.key==='Escape')modal.remove();});
 }
 
 function viewLoanDetail(loanId){
@@ -1809,7 +1999,7 @@ async function rejectLoanRequest(id){
   await updateSheet('LoanRequests',id,{status:'rejected',rejectReason:reason||''});
   addNotification('Loan Rejected',`Loan request of ${fmt(req.amount)} was not approved. Reason: ${reason}`,'warning','📋',req.memberId);
   const rejMember=getMember(req.memberId);const rejEmail=rejMember?.email||'';
-  if(rejEmail){try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendLoanRejectionEmail',to:rejEmail,memberName:rejMember?.fullname||req.memberName||'',memberId:rejMember?.memberid||req.memberId||'',loanType:req.loanType||'—',amount:req.amount||0,reason:reason||'Not specified',date:todayBS()})});}catch(e){}}
+  if(rejEmail){try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendLoanRejectionEmail',to:rejEmail,memberName:rejMember?.fullname||req.memberName||'',memberId:rejMember?.memberid||req.memberId||'',loanType:req.loanType||'—',amount:req.amount||0,reason:reason||'Not specified',date:todayBS(),token:API_TOKEN})});}catch(e){}}
   hideLoader();updateBadges();renderAdminLoans(document.getElementById('admin-main'));
 }
 
@@ -2579,7 +2769,7 @@ async function saveDueEdit(dueId){
   if(currentTab==='fin-history'){renderFinHistory(document.getElementById('admin-main'));setTimeout(()=>window.__fhGoTo(window.__fhCurrentPage||1,true),50);}
   else if(currentTab==='funds')renderAdminFunds(document.getElementById('admin-main'));
   else if(currentTab==='dashboard')renderAdminDash(document.getElementById('admin-main'));
-  addNotification('Payment Record Updated',`Corrected ${fmt(amount)} entry dated ${date}.`,'success','✏️');
+  addNotification('Payment Record Updated',`Corrected ${fmt(amount)} entry dated ${date}.`,'success','✏️','admin');
 }
 
 async function deleteDueRecord(dueId,memberName){
@@ -2662,7 +2852,7 @@ async function saveExpense(){
   showLoader('Saving expense record...');
   const expense={id:Date.now(),date:document.getElementById('exp-date').value,category:document.getElementById('exp-cat').value,description:desc,paidTo:document.getElementById('exp-paidto').value.trim(),amount,receiptUrl};
   const result=await saveToSheet('Expenses',expense);
-  if(result&&!result.error){APP.expenses.push(expense);addNotification('Expense Recorded',`${fmt(amount)} recorded under ${expense.category} — ${desc}`,'warning','💸');await loadAllData('Refreshing data...');updateBadges();hideLoader();okEl.classList.remove('hidden');setTimeout(()=>{renderAdminExpenses(document.getElementById('admin-main'));},1200);}
+  if(result&&!result.error){APP.expenses.push(expense);addNotification('Expense Recorded',`${fmt(amount)} recorded under ${expense.category} — ${desc}`,'warning','💸','admin');await loadAllData('Refreshing data...');updateBadges();hideLoader();okEl.classList.remove('hidden');setTimeout(()=>{renderAdminExpenses(document.getElementById('admin-main'));},1200);}
   else{hideLoader();errEl.textContent='Failed to save. Check your connection and try again.';errEl.classList.remove('hidden');}
 }
 
@@ -3027,7 +3217,7 @@ async function submitBulkAdd(){
     const hashedPass=await hashPassword(mem.pass);
     const m={id:Date.now()+Math.floor(Math.random()*9999),memberid:mem.mid,username:mem.user,password:hashedPass,fullname:mem.name,role:mem.role||'Member',gender:'',occupation:'',citizenno:'',issuedate:'',address:'',phone:'',email:mem.email||'',fathername:'',grandfathername:'',spousename:'',status:'verified',joined:todayBS(),photourl:'',docfront:'',docback:''};
     await saveToSheet('Members',m);APP.members.push(m);
-    if(mem.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:mem.email,name:mem.name,username:mem.user,memberId:mem.mid,password:mem.pass,website:'https://hatemalosamuha.vercel.app'})});}
+    if(mem.email){await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendWelcomeEmail',to:mem.email,name:mem.name,username:mem.user,memberId:mem.mid,password:mem.pass,website:'https://hatemalosamuha.vercel.app',token:API_TOKEN})});}
     created.push({...mem,fullname:mem.name});
   }
   hideLoader();updateBadges();
@@ -3143,7 +3333,7 @@ async function approveLoanRequest(id){
   const loanMember=getMember(req.memberId);
   addNotification('Loan Approved',`Loan of ${fmt(finalAmount)} approved for ${req.memberName||req.memberId}!`,'success','✅',loanMember?.memberid||req.memberId);
   const memberEmail=loanMember?.email||'';
-  if(memberEmail){try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendLoanApprovalEmail',to:memberEmail,memberName:loanMember?.fullname||req.memberName||'',memberId:loanMember?.memberid||req.memberId||'',loanType:req.loanType||newLoan.purpose||'',principal:finalAmount,interest:calc.interest,rate,totalPayable:calc.totalPayable,monthly:calc.monthlyInstallment,months,issued:newLoan.issued})});}catch(e){}}
+  if(memberEmail){try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'sendLoanApprovalEmail',to:memberEmail,memberName:loanMember?.fullname||req.memberName||'',memberId:loanMember?.memberid||req.memberId||'',loanType:req.loanType||newLoan.purpose||'',principal:finalAmount,interest:calc.interest,rate,totalPayable:calc.totalPayable,monthly:calc.monthlyInstallment,months,issued:newLoan.issued,token:API_TOKEN})});}catch(e){}}
   showLoader('Generating PDF...');
   const pdfUrl=await saveLoanPDFWithSnapshot(id,pdfInputSnapshot);
   if(pdfUrl){req.pdfUrl=pdfUrl;await updateSheet('LoanRequests',id,{pdfUrl});}
@@ -3166,7 +3356,7 @@ async function saveLoanPDFWithSnapshot(id,snap){
     document.body.removeChild(wrapper);
     if(!canvas||canvas.width===0||canvas.height===0){console.warn('Canvas is empty');return null;}
     const base64=canvas.toDataURL('image/jpeg',0.92).split(',')[1];
-    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:'LoanApproval_'+(req.memberName||'member').replace(/\s/g,'_')+'_'+id+'.jpg',base64Data:base64,mimeType:'image/jpeg'})});
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'uploadFile',fileName:'LoanApproval_'+(req.memberName||'member').replace(/\s/g,'_')+'_'+id+'.jpg',base64Data:base64,mimeType:'image/jpeg',token:API_TOKEN})});
     const data=await res.json();
     return data.viewUrl||data.url||null;
   }catch(e){
@@ -3255,7 +3445,7 @@ function renderMeetingCard(m){
         ${m.agenda?`<div style="font-size:12px;color:#374151;margin-top:5px;background:#f8faff;padding:8px 10px;border-radius:6px;border-left:3px solid var(--primary)">${m.agenda}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-        ${m.minutesUrl?`<a href="${m.minutesUrl}" target="_blank" class="btn-sm btn-sm-b" style="text-decoration:none;padding:4px 10px;font-size:11px">📄 Minutes</a>`:'<span style="font-size:11px;color:var(--muted)">No minutes</span>'}
+        ${m.minutesUrl?`<button onclick="viewMinutes('${m.minutesUrl}')" class="btn-sm btn-sm-b" style="padding:4px 10px;font-size:11px">📄 Minutes</button>`:'<span style="font-size:11px;color:var(--muted)">No minutes</span>'}
         <button class="btn-sm btn-sm-b" onclick="toggleAttendancePanel('${m.id}')">✏️ Attendance</button>
         <button class="btn-sm" onclick="startEditMeeting('${m.id}')">Edit</button>
         <button class="btn-sm btn-sm-r" onclick="deleteMeeting('${m.id}')">Del</button>
@@ -3745,6 +3935,14 @@ async function renderDuesReminder(el){
         </select>
         <button class="btn btn-p" style="font-size:12px;padding:7px 16px" onclick="sendAllEmailReminders()" id="dr-send-btn">📧 Send All Emails</button>
       </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--primary)">Filter Member:</div>
+        <select id="dr-member" onchange="refreshDuesReminder()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:220px">
+          <option value="all">— All Members —</option>
+          ${memberSort(APP.members.filter(m=>m.status==='verified')).map(m=>`<option value="${m.id}">${m.fullname} (${m.memberid||'—'})</option>`).join('')}
+        </select>
+        <button onclick="sendAllEmailReminders()" id="dr-send-member-btn" style="padding:7px 16px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:none">📧 Send to Member</button>
+      </div>
     </div>
 
     <!-- Stats row -->
@@ -3783,24 +3981,48 @@ async function renderDuesReminder(el){
   window.__drRefresh=function(){
     const month=document.getElementById('dr-month')?.value||selectedMonth;
     const year=document.getElementById('dr-year')?.value||selectedYear;
+    const memberFilter=document.getElementById('dr-member')?.value||'all';
     const allUnpaid=getUnpaidMonthly(month,year);
     const verifiedMembers=memberSort(APP.members.filter(m=>m.status==='verified'));
     const paidList=verifiedMembers.filter(m=>!allUnpaid.find(u=>String(u.id)===String(m.id)));
-    const activeLoansAll=APP.loans.filter(l=>l.status==='active');
+
+    // Apply member filter
+    const filteredUnpaid=memberFilter==='all'?allUnpaid:allUnpaid.filter(m=>String(m.id)===memberFilter);
+    const filteredPaid=memberFilter==='all'?paidList:paidList.filter(m=>String(m.id)===memberFilter);
+
+    // Update send buttons based on filter
+    const sendBtn=document.getElementById('dr-send-btn');
+    const sendMemberBtn=document.getElementById('dr-send-member-btn');
+    if(memberFilter==='all'){
+      if(sendBtn){sendBtn.style.display='';sendBtn.textContent='📧 Send All Emails';}
+      if(sendMemberBtn)sendMemberBtn.style.display='none';
+    } else {
+      const sel=APP.members.find(m=>String(m.id)===memberFilter);
+      if(sendBtn)sendBtn.style.display='none';
+      if(sendMemberBtn){
+        sendMemberBtn.style.display='';
+        sendMemberBtn.textContent=`📧 Send to ${sel?.fullname?.split(' ')[0]||'Member'}`;
+        sendMemberBtn.onclick=()=>quickSendEmail(memberFilter,month,year);
+      }
+    }
+
+    const activeLoansAll=memberFilter==='all'
+      ?APP.loans.filter(l=>l.status==='active')
+      :APP.loans.filter(l=>l.status==='active'&&(String(l.memberId)===memberFilter||String(l.memberId)===String(APP.members.find(m=>String(m.id)===memberFilter)?.memberid)));
 
     document.getElementById('dr-paid-count').textContent=paidList.length;
     document.getElementById('dr-unpaid-count').textContent=allUnpaid.length;
-    document.getElementById('dr-unpaid-badge').textContent=allUnpaid.length;
-    document.getElementById('dr-paid-badge').textContent=paidList.length;
+    document.getElementById('dr-unpaid-badge').textContent=filteredUnpaid.length;
+    document.getElementById('dr-paid-badge').textContent=filteredPaid.length;
     document.getElementById('dr-loan-badge').textContent=activeLoansAll.length;
 
     // ── SECTION 1a: Unpaid monthly dues grid ──
     const memberCardStyle=`background:white;border:1px solid #fca5a5;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px`;
     const memberCardPaidStyle=`background:white;border:1px solid #86efac;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px`;
 
-    document.getElementById('dr-unpaid-grid').innerHTML=allUnpaid.length===0
-      ?`<div class="alert alert-s" style="grid-column:1/-1">🎉 All members have paid for ${month} ${year}!</div>`
-      :allUnpaid.map(m=>`
+    document.getElementById('dr-unpaid-grid').innerHTML=filteredUnpaid.length===0
+      ?`<div class="alert alert-s" style="grid-column:1/-1">🎉 ${memberFilter==='all'?`All members have paid for ${month} ${year}!`:`This member has paid for ${month} ${year}.`}</div>`
+      :filteredUnpaid.map(m=>`
         <div style="${memberCardStyle}">
           <div style="display:flex;align-items:center;gap:8px">
             <div class="av" style="width:30px;height:30px;font-size:10px;flex-shrink:0;overflow:hidden;padding:0">
@@ -3818,9 +4040,9 @@ async function renderDuesReminder(el){
         </div>`).join('');
 
     // ── SECTION 1b: Paid monthly dues grid ──
-    document.getElementById('dr-paid-grid').innerHTML=paidList.length===0
+    document.getElementById('dr-paid-grid').innerHTML=filteredPaid.length===0
       ?`<p style="font-size:12px;color:var(--muted);grid-column:1/-1">No payments recorded yet.</p>`
-      :paidList.map(m=>{
+      :filteredPaid.map(m=>{
         const payRec=APP.dues.find(d=>d.status==='paid'&&d.type==='monthly'&&String(d.month||'').startsWith(month)&&String(d.year||d.date?.split('-')[0])===String(year)&&(String(d.memberId)===String(m.memberid)||String(d.memberId)===String(m.id)));
         return`<div style="${memberCardPaidStyle}">
           <div style="display:flex;align-items:center;gap:8px">
@@ -3845,12 +4067,19 @@ async function renderDuesReminder(el){
     const monthPad=String(monthIdx+1).padStart(2,'0');
     const monthDatePrefix=`${year}-${monthPad}`;
 
+    // A loan issued in the selected month has its FIRST installment due NEXT month
+    // So exclude loans where issued date is in the selected month
+    const loansActiveDue=activeLoansAll.filter(l=>{
+      const issued=String(l.issued||'');
+      return !issued.startsWith(monthDatePrefix); // exclude loans just issued this month
+    });
+
     // Sort: unpaid this month first, then paid
-    const loansUnpaid=activeLoansAll.filter(l=>{
+    const loansUnpaid=loansActiveDue.filter(l=>{
       const paid=APP.dues.some(d=>String(d.loanId)===String(l.id)&&d.type==='loan_repayment'&&String(d.date||'').startsWith(monthDatePrefix));
       return !paid;
     });
-    const loansPaid=activeLoansAll.filter(l=>{
+    const loansPaid=loansActiveDue.filter(l=>{
       return APP.dues.some(d=>String(d.loanId)===String(l.id)&&d.type==='loan_repayment'&&String(d.date||'').startsWith(monthDatePrefix));
     });
 
@@ -3897,7 +4126,7 @@ async function renderDuesReminder(el){
       </div>`;
     }
 
-    document.getElementById('dr-loan-badge').textContent=loansUnpaid.length+' unpaid';
+    document.getElementById('dr-loan-badge').textContent=loansActiveDue.length>0?loansUnpaid.length+' unpaid':'none due';
     document.getElementById('dr-loan-list').innerHTML=activeLoansAll.length===0
       ?`<div class="alert alert-s">No active loans.</div>`
       :`${loansUnpaid.length>0?`<div style="font-size:12px;font-weight:700;color:var(--secondary);margin-bottom:8px">⏳ Installment Not Yet Paid (${loansUnpaid.length})</div>`:''}
@@ -4063,7 +4292,7 @@ async function sendAllEmailReminders(){
     }catch(e){}
   }
   hideLoader();
-  addNotification('Dues Reminders Sent',`${sent} reminder email(s) sent for ${month} ${year}.`,'notice','📧');
+  addNotification('Dues Reminders Sent',`${sent} reminder email(s) sent for ${month} ${year}.`,'notice','📧','admin');
   alert(`✅ ${sent} email(s) sent!\n${unpaid.length-withEmail.length>0?unpaid.length-withEmail.length+' member(s) skipped — no email saved.':''}`);
 }
 
