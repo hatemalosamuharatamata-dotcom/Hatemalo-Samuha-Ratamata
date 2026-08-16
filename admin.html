@@ -489,9 +489,10 @@ function renderAdminDash(el){
   const initialTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='initial').reduce((s,d)=>s+Number(d.amount),0);
   const monthlyTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='monthly').reduce((s,d)=>s+Number(d.amount),0);
   const specialTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='special').reduce((s,d)=>s+Number(d.amount),0);
-  const loanFeeTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='loan-fee').reduce((s,d)=>s+Number(d.amount),0);
+  const loanFeeTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='loan_fee').reduce((s,d)=>s+Number(d.amount),0);
+  const otherTotal=APP.dues.filter(d=>d.status==='paid'&&d.type==='other').reduce((s,d)=>s+Number(d.amount),0);
   // Total fund = initial + monthly + special + loan fees (NOT loan repayments)
-  const totalDues=initialTotal+monthlyTotal+specialTotal+loanFeeTotal;
+  const totalDues=initialTotal+monthlyTotal+specialTotal+loanFeeTotal+otherTotal;
   const activeLoans=APP.loans.filter(l=>l.status==='active');
   const totalLoans=activeLoans.reduce((s,l)=>s+Number(l.amount),0);
   const totalRepaid=activeLoans.reduce((s,l)=>s+Number(l.repaid),0);
@@ -1373,7 +1374,7 @@ async function recordPayment(){
     status:     'paid',
     paymode:    document.getElementById('pay-mode')?.value||'Cash',
     type,
-    note:       dueNote||(type==='initial'?'Initial Deposit':type==='loan_repayment'?'Loan Repayment':type==='loan-fee'?'Loan Application Fee':'')
+    note:       dueNote||(type==='initial'?'Initial Deposit':type==='loan_repayment'?'Loan Repayment':type==='loan_fee'?'Loan Application Fee':'')
   };
   // Only add loanId for loan repayments (not in sheet for other types)
   if(type==='loan_repayment'&&selectedLoanId) newDue.loanId=selectedLoanId;
@@ -2553,8 +2554,8 @@ function getFiltered(){
     const special=mDues.filter(d=>d.type==='special').reduce((s,d)=>s+Number(d.amount),0);
     const initial=mDues.filter(d=>d.type==='initial').reduce((s,d)=>s+Number(d.amount),0);
     const loanRepay=mDues.filter(d=>d.type==='loan_repayment').reduce((s,d)=>s+Number(d.amount),0);
-    const loanFee=mDues.filter(d=>d.type==='loan-fee').reduce((s,d)=>s+Number(d.amount),0);
-    const other=mDues.filter(d=>!['monthly','special','initial','loan_repayment','loan-fee'].includes(d.type)).reduce((s,d)=>s+Number(d.amount),0);
+    const loanFee=mDues.filter(d=>d.type==='loan_fee').reduce((s,d)=>s+Number(d.amount),0);
+    const other=mDues.filter(d=>!['monthly','special','initial','loan_repayment','loan_fee'].includes(d.type)).reduce((s,d)=>s+Number(d.amount),0);
     const loanOut=loans.reduce((s,l)=>{
   const total=Number(l.totalPayable)||calcLoan(l.amount,l.rate,l.months).totalPayable;
   return s+Math.max(0,total-Number(l.repaid));
@@ -2697,7 +2698,7 @@ function getFiltered(){
             <input type="checkbox" class="fh-type-cb" value="loan_repayment" checked onchange="onTypeFilterChange()" style="accent-color:var(--primary)"> Loan Repayment
           </label>
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-            <input type="checkbox" class="fh-type-cb" value="loan-fee" checked onchange="onTypeFilterChange()" style="accent-color:var(--primary)"> Loan Fee
+            <input type="checkbox" class="fh-type-cb" value="loan_fee" checked onchange="onTypeFilterChange()" style="accent-color:var(--primary)"> Loan Fee
           </label>
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
             <input type="checkbox" class="fh-type-cb" value="other" checked onchange="onTypeFilterChange()" style="accent-color:var(--primary)"> Other
@@ -3280,7 +3281,7 @@ function viewLoanApplication(id){
       <div style="border:2px solid var(--primary);border-radius:10px;padding:16px;background:#f8faff">
         <div style="font-size:12px;font-weight:700;color:var(--primary);text-align:center;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em">कार्यालय प्रयोजनका लागि (Office Use Only)</div>
         ${(()=>{
-          const totalSavings=APP.dues.filter(d=>(String(d.memberId)===String(mem?.memberid)||String(d.memberId)===String(mem?.id))&&d.status==='paid'&&d.type!=='loan_repayment'&&d.type!=='loan-fee').reduce((s,d)=>s+Number(d.amount),0);
+          const totalSavings=APP.dues.filter(d=>(String(d.memberId)===String(mem?.memberid)||String(d.memberId)===String(mem?.id))&&d.status==='paid'&&d.type!=='loan_repayment'&&d.type!=='loan_fee').reduce((s,d)=>s+Number(d.amount),0);
           const currentMonth=todayBS().slice(0,7);
           const hasUnpaidDues=!APP.dues.some(d=>(String(d.memberId)===String(mem?.memberid)||String(d.memberId)===String(mem?.id))&&d.status==='paid'&&String(d.date||'').slice(0,7)===currentMonth);
           return`<div style="font-size:12px;line-height:2;margin-bottom:10px">यस समुहको अभिलेख अनुसार निजको बचत रकम रु. <input type="number" id="ap-savings" value="${totalSavings}" style="border:none;border-bottom:2px solid var(--primary);background:transparent;font-size:13px;font-weight:700;color:var(--primary);width:120px;padding:0 4px;text-align:center"> रहेको छ । यस महिनाको बचत बुझाउन बाँकी: <select id="ap-savings-due" style="border:none;border-bottom:1px solid #555;background:transparent;font-size:12px;padding:0 4px"><option value="छैन" ${!hasUnpaidDues?'selected':''}>छैन</option><option value="छ" ${hasUnpaidDues?'selected':''}>छ</option></select></div>`;
